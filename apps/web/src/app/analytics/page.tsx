@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import NavBar from "@/components/NavBar";
 import {
   BarChart3, Activity, DollarSign, Zap, Bot,
   ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown,
@@ -94,28 +94,13 @@ export default function AnalyticsPage() {
       <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", backgroundImage: "radial-gradient(rgba(11,26,51,0.06) 0.7px, transparent 0.7px)", backgroundSize: "16px 16px" }} />
 
       {/* NAV */}
-      <header style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, minHeight: 60, padding: "0 3%", background: "rgba(244,240,230,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(11,26,51,0.08)" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 900, letterSpacing: "-0.05em", color: C.ink, textDecoration: "none" }}>
-          <span style={{ display: "grid", placeItems: "center", width: 33, height: 33, color: "white", background: C.ocean, fontSize: 11, borderRadius: 4 }}>AG</span>
-          ArcGent
-        </Link>
-        <nav style={{ display: "flex", gap: 28, fontSize: 9, fontWeight: 700, color: C.steel, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          <Link href="/dashboard" style={{ textDecoration: "none", color: C.steel }}>Dashboard</Link>
-          <Link href="/analytics" style={{ textDecoration: "none", color: C.purple, borderBottom: `2px solid ${C.purple}`, paddingBottom: 2 }}>Analytics</Link>
-          <Link href="/marketplace" style={{ textDecoration: "none", color: C.steel }}>Marketplace</Link>
-        </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)}
-            style={{ padding: "8px 12px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 11, background: "white", outline: "none" }}>
-            <option value="24h">24 hours</option>
-            <option value="7d">7 days</option>
-            <option value="30d">30 days</option>
-          </select>
-          <button style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", background: C.ocean, color: "white", border: "none", borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: "uppercase", cursor: "pointer" }}>
-            <Download size={12} /> Export
-          </button>
-        </div>
-      </header>
+      <NavBar
+        ctaLabel="Export"
+        ctaHref="#"
+        extraLinks={[
+          { href: "#", label: `${timeRange === "24h" ? "24H" : timeRange === "7d" ? "7D" : "30D"} ▾` }
+        ]}
+      />
 
       {/* PAGE TITLE */}
       <div style={{ position: "relative", zIndex: 1, padding: "32px 3% 0", maxWidth: 1200, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>

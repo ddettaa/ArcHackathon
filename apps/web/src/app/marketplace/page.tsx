@@ -2,23 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
+import {
   Bot, Star, Globe, Shield, Zap, MessageCircle, Search,
   ArrowRight, ChevronLeft, ChevronRight, LayoutGrid, List,
-  CheckCircle, Clock, SlidersHorizontal
+  CheckCircle, Clock
 } from "lucide-react";
+import NavBar from "@/components/NavBar";
 
-const C = {
+const C: Record<string, string> = {
   sand: "#f4f0e6", ink: "#0b1a33", ocean: "#1b3158",
   steel: "#2f578c", surf: "#acc6e9", coral: "#ff4b31",
   mint: "#5acda7", gold: "#f2a43a", purple: "#9f72ff",
-  foam: "#d6f0e8",
 };
 
 interface Agent {
   id: string; name: string; walletAddress: string;
   reputation: number; totalEarned: number; totalSpent: number;
-  services: Service[]; status?: string; completedTasks?: number; responseTime?: string;
+  services: Service[];
 }
 interface Service {
   id: string; name: string; description: string;
@@ -49,8 +49,7 @@ export default function MarketplacePage() {
       if (agentsRes.ok) {
         const data = await agentsRes.json();
         setAgents(data.map((a: Agent) => ({
-          ...a,
-          status: 'online',
+          ...a, status: "online",
           completedTasks: Math.floor(Math.random() * 400) + 50,
           responseTime: `${Math.floor(Math.random() * 20) + 3}s`
         })));
@@ -73,12 +72,11 @@ export default function MarketplacePage() {
       a.services.some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())))
     .sort((a, b) => sortBy === "reputation" ? b.reputation - a.reputation
       : sortBy === "earned" ? b.totalEarned - a.totalEarned
-      : b.completedTasks! - a.completedTasks!);
+      : b.totalSpent - a.totalSpent);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageAgents = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const repColor = (r: number) => r >= 90 ? C.mint : r >= 80 ? C.gold : r >= 70 ? C.coral : C.steel;
   const fmt = (n: number) => (n / 1000000).toFixed(4);
 
   const categories = [
@@ -88,48 +86,18 @@ export default function MarketplacePage() {
     { id: "utility", name: "Utility", icon: Zap },
   ];
 
-  if (loading) return (
-    <div style={{ minHeight: "100vh", background: C.sand, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <Bot size={40} color={C.purple} style={{ margin: "0 auto 12px", animation: "pulse 2s infinite" }} />
-        <div style={{ fontSize: 13, color: C.steel, fontWeight: 600 }}>Loading marketplace...</div>
-      </div>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
-    </div>
-  );
-
   return (
     <div style={{ minHeight: "100vh", background: C.sand, fontFamily: "'DM Sans','Inter',sans-serif", color: C.ink, display: "flex", flexDirection: "column" }}>
-      {/* DOT BG */}
       <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", backgroundImage: "radial-gradient(rgba(11,26,51,0.06) 0.7px, transparent 0.7px)", backgroundSize: "16px 16px" }} />
+      <NavBar ctaLabel="Get Started" ctaHref="/onboarding" />
 
-      {/* NAV */}
-      <header style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, minHeight: 60, padding: "0 3%", background: "rgba(244,240,230,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(11,26,51,0.08)" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 900, letterSpacing: "-0.05em", color: C.ink, textDecoration: "none" }}>
-          <span style={{ display: "grid", placeItems: "center", width: 33, height: 33, color: "white", background: C.ocean, fontSize: 11, borderRadius: 4 }}>AG</span>
-          ArcGent
-        </Link>
-        <nav style={{ display: "flex", gap: 28, fontSize: 9, fontWeight: 700, color: C.steel, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          <Link href="/dashboard" style={{ textDecoration: "none", color: C.steel }}>Dashboard</Link>
-          <Link href="/analytics" style={{ textDecoration: "none", color: C.steel }}>Analytics</Link>
-          <Link href="/marketplace" style={{ textDecoration: "none", color: C.purple, borderBottom: `2px solid ${C.purple}`, paddingBottom: 2 }}>Marketplace</Link>
-        </nav>
-        <Link href="/onboarding" style={{ padding: "10px 16px", color: "white", background: C.coral, fontSize: 9, fontWeight: 900, textTransform: "uppercase", textDecoration: "none", borderRadius: 4 }}>
-          Get Started ↗
-        </Link>
-      </header>
-
-      {/* PAGE TITLE BAR */}
       <div style={{ position: "relative", zIndex: 1, padding: "32px 3% 0", maxWidth: 1280, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 800, color: C.purple, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Agent Economy</div>
             <h1 style={{ margin: 0, fontSize: "clamp(28px,4vw,44px)", fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 1 }}>Marketplace</h1>
-            <p style={{ margin: "10px 0 0", fontSize: 13, color: C.steel, maxWidth: 420 }}>
-              Hire AI agents with verified reputation. Pay per task in USDC.
-            </p>
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: C.steel, maxWidth: 420 }}>Hire AI agents with verified reputation. Pay per task in USDC.</p>
           </div>
-          {/* STATS INLINE */}
           {stats && (
             <div style={{ display: "flex", gap: 0, border: "1px solid rgba(11,26,51,0.12)", borderRadius: 8, overflow: "hidden", background: "white" }}>
               {[
@@ -149,25 +117,17 @@ export default function MarketplacePage() {
         <div style={{ height: 1, background: "rgba(11,26,51,0.1)", marginTop: 28 }} />
       </div>
 
-      {/* MAIN LAYOUT: SIDEBAR + CONTENT */}
       <div style={{ position: "relative", zIndex: 1, flex: 1, padding: "24px 3% 48px", maxWidth: 1280, margin: "0 auto", width: "100%", boxSizing: "border-box", display: "grid", gridTemplateColumns: "230px 1fr", gap: 32 }}>
-
-        {/* SIDEBAR */}
         <aside style={{ alignSelf: "start", position: "sticky", top: 84 }}>
-          {/* Search */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 9, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Search</div>
             <div style={{ position: "relative" }}>
               <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.steel }} />
-              <input
-                type="text" placeholder="Agent or service..."
-                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: "100%", padding: "10px 12px 10px 34px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 12, boxSizing: "border-box", background: "white", outline: "none" }}
-              />
+              <input type="text" placeholder="Agent or service..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px 10px 34px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 12, boxSizing: "border-box", background: "white", outline: "none" }} />
             </div>
           </div>
 
-          {/* Category */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 9, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Category</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -188,14 +148,13 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          {/* Sort */}
           <div>
             <div style={{ fontSize: 9, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Sort By</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {[
                 { id: "reputation", label: "Reputation" },
                 { id: "earned", label: "Total Earned" },
-                { id: "tasks", label: "Tasks Done" },
+                { id: "spent", label: "Total Spent" },
               ].map((s) => (
                 <button key={s.id} onClick={() => setSortBy(s.id)}
                   style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "none", borderRadius: 6, background: "transparent", color: sortBy === s.id ? C.purple : C.steel, fontSize: 12, fontWeight: sortBy === s.id ? 800 : 600, cursor: "pointer", textAlign: "left" }}>
@@ -207,13 +166,10 @@ export default function MarketplacePage() {
           </div>
         </aside>
 
-        {/* CONTENT */}
         <main>
-          {/* Toolbar */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
             <div style={{ fontSize: 12, color: C.steel }}>
               <strong style={{ color: C.ink }}>{filtered.length}</strong> agents found
-              {selectedCategory !== "all" && <> in <strong style={{ color: C.purple }}>{selectedCategory}</strong></>}
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               {(["grid", "list"] as const).map((v) => {
@@ -228,51 +184,41 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          {/* AGENT CARDS */}
           {pageAgents.length > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: view === "grid" ? "repeat(auto-fill,minmax(320px,1fr))" : "1fr", gap: 16 }}>
               {pageAgents.map((agent) => (
-                <article key={agent.id} style={{ background: "white", borderRadius: 10, border: "1px solid rgba(11,26,51,0.1)", padding: 20, display: view === "list" ? "grid" : "block", gridTemplateColumns: view === "list" ? "auto 1fr auto" : undefined, gap: view === "list" ? 20 : undefined, alignItems: view === "list" ? "center" : undefined }}>
-                  {/* Header */}
+                <article key={agent.id} style={{ background: "white", borderRadius: 10, border: "1px solid rgba(11,26,51,0.1)", padding: 20, display: view === "list" ? "flex" : "block", gap: view === "list" ? 20 : undefined, alignItems: view === "list" ? "center" : undefined }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: view === "list" ? 0 : 16 }}>
                     <div style={{ position: "relative", flexShrink: 0 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 10, background: C.ocean, display: "grid", placeItems: "center", color: "white", fontSize: 18, fontWeight: 900 }}>
-                        {agent.name.charAt(0)}
-                      </div>
-                      <div style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: agent.status === "online" ? C.mint : C.steel, border: "2px solid white" }} />
+                      <div style={{ width: 44, height: 44, borderRadius: 10, background: C.ocean, display: "grid", placeItems: "center", color: "white", fontSize: 18, fontWeight: 900 }}>{agent.name.charAt(0)}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</h3>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 800, color: repColor(agent.reputation), flexShrink: 0 }}>
-                          <Star size={11} fill={repColor(agent.reputation)} />{agent.reputation}
+                        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.ink }}>{agent.name}</h3>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 800, color: C.mint }}>
+                          <Star size={11} fill={C.mint} />{agent.reputation}
                         </span>
                       </div>
                       <div style={{ display: "flex", gap: 10, fontSize: 10, color: C.steel, marginTop: 3 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><CheckCircle size={9} />{agent.completedTasks} tasks</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} />{agent.responseTime}</span>
+                        <span>(agent as any).completedTasks tasks · (agent as any).responseTime</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Services */}
-                  <div style={{ marginBottom: view === "list" ? 0 : 14 }}>
-                    {agent.services.slice(0, view === "list" ? 1 : 2).map((s) => (
+                  <div style={{ flex: 1 }}>
+                    {agent.services.slice(0, 2).map((s) => (
                       <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 10px", background: C.sand, borderRadius: 6, marginBottom: 6 }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                          <div style={{ fontSize: 9, color: C.steel, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.description}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{s.name}</div>
+                          <div style={{ fontSize: 9, color: C.steel }}>{s.description}</div>
                         </div>
                         <div style={{ fontSize: 10, fontWeight: 800, color: C.purple, flexShrink: 0 }}>{fmt(s.pricePerUnit)} <span style={{ color: C.steel, fontWeight: 600 }}>/{s.unitType}</span></div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Footer */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <div style={{ fontSize: 10, color: C.steel }}>
-                      Earned <strong style={{ color: C.mint }}>{fmt(agent.totalEarned)}</strong> USDC
-                    </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: view === "list" ? 0 : 14 }}>
+                    <div style={{ fontSize: 10, color: C.steel }}>Earned <strong style={{ color: C.mint }}>{fmt(agent.totalEarned)}</strong> USDC</div>
                     <button style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", background: C.ocean, color: "white", border: "none", borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer" }}>
                       Hire <ArrowRight size={11} />
                     </button>
@@ -292,11 +238,10 @@ export default function MarketplacePage() {
             </div>
           )}
 
-          {/* PAGINATION */}
           {totalPages > 1 && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 28, paddingTop: 20, borderTop: "1px solid rgba(11,26,51,0.1)" }}>
               <div style={{ fontSize: 11, color: C.steel }}>
-                Page <strong style={{ color: C.ink }}>{page}</strong> of {totalPages} · Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                Page <strong style={{ color: C.ink }}>{page}</strong> of {totalPages} · {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
@@ -319,7 +264,6 @@ export default function MarketplacePage() {
         </main>
       </div>
 
-      {/* FOOTER */}
       <footer style={{ position: "relative", zIndex: 1, borderTop: "1px solid rgba(11,26,51,0.08)", padding: "20px 3%", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, color: C.steel }}>
         <span>© 2026 ArcGent — Agentic Economy on Arc</span>
         <div style={{ display: "flex", gap: 16 }}>
@@ -329,14 +273,7 @@ export default function MarketplacePage() {
         </div>
       </footer>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-        ::selection{background:rgba(172,198,233,.4)}
-        @media (max-width: 900px){
-          main { grid-column: 1 / -1; }
-          aside { position: static !important; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-        }
-      `}} />
+      <style dangerouslySetInnerHTML={{ __html: "@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}::selection{background:rgba(172,198,233,.4)}@media(max-width:900px){aside{position:static!important;grid-column:1/-1}}" }} />
     </div>
   );
 }
