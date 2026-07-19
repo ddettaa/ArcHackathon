@@ -7,30 +7,10 @@ interface Rule {
   id: string;
   name: string;
   description?: string;
-  signal: {
-    source: string;
-    trigger: string;
-    conditions: Record<string, any>;
-  };
-  action: {
-    type: string;
-    recipient: string;
-    amount: number;
-    currency: string;
-    memo?: string;
-  };
+  signal: { source: string; trigger: string; conditions: Record<string, any> };
+  action: { type: string; recipient: string; amount: number; currency: string; memo?: string };
   enabled: boolean;
   cooldown?: number;
-}
-
-interface Payment {
-  id: string;
-  txHash: string;
-  rule: string;
-  recipient: string;
-  amount: number;
-  status: "pending" | "confirmed" | "failed";
-  timestamp: string;
 }
 
 interface AgentStatus {
@@ -43,175 +23,120 @@ interface AgentStatus {
 
 export default function Dashboard() {
   const defaultRules: Rule[] = [
-    {
-      id: "bug-bounty-1",
-      name: "Auto Bug Bounty",
-      description: "Pay when PR with 'fix' label is merged",
-      signal: { source: "github", trigger: "pull_request.merged", conditions: { label: "fix" } },
-      action: { type: "pay", recipient: "0x1234...5678", amount: 50, currency: "USDC" },
-      enabled: false,
-      cooldown: 3600,
-    },
-    {
-      id: "flight-delay-1",
-      name: "Flight Delay Refund",
-      description: "Refund when flight delayed > 2 hours",
-      signal: { source: "api", trigger: "flight.delayed", conditions: { delay_hours: 2 } },
-      action: { type: "refund", recipient: "0xabcd...ef12", amount: 100, currency: "USDC" },
-      enabled: false,
-      cooldown: 86400,
-    },
-    {
-      id: "tip-stream-1",
-      name: "Content Tip Stream",
-      description: "Tip writer when content hits 1000 reads",
-      signal: { source: "api", trigger: "page.views", conditions: { threshold: 1000 } },
-      action: { type: "tip", recipient: "0x9876...5432", amount: 5, currency: "USDC" },
-      enabled: false,
-      cooldown: 604800,
-    },
+    { id: "bug-bounty-1", name: "Auto Bug Bounty", description: "Pay when PR with 'fix' label is merged", signal: { source: "github", trigger: "pull_request.merged", conditions: { label: "fix" } }, action: { type: "pay", recipient: "0x1234...5678", amount: 50, currency: "USDC" }, enabled: false, cooldown: 3600 },
+    { id: "flight-delay-1", name: "Flight Delay Refund", description: "Refund when flight delayed > 2 hours", signal: { source: "api", trigger: "flight.delayed", conditions: { delay_hours: 2 } }, action: { type: "refund", recipient: "0xabcd...ef12", amount: 100, currency: "USDC" }, enabled: false, cooldown: 86400 },
+    { id: "tip-stream-1", name: "Content Tip Stream", description: "Tip writer when content hits 1000 reads", signal: { source: "api", trigger: "page.views", conditions: { threshold: 1000 } }, action: { type: "tip", recipient: "0x9876...5432", amount: 5, currency: "USDC" }, enabled: false, cooldown: 604800 },
   ];
 
-  const defaultStatus: AgentStatus = {
-    running: true,
-    rulesCount: 4,
-    balance: "865,034,306.42",
-    walletAddress: "0x742d...a3f8",
-    lastSignalCheck: "2 min ago",
-  };
+  const defaultStatus: AgentStatus = { running: true, rulesCount: 4, balance: "865,034,306.42", walletAddress: "0x742d...a3f8", lastSignalCheck: "2 min ago" };
 
   const [rules, setRules] = useState<Rule[]>(defaultRules);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [status] = useState<AgentStatus>(defaultStatus);
   const [activeTab, setActiveTab] = useState<"overview" | "rules" | "payments">("overview");
   const [showNewRule, setShowNewRule] = useState(false);
 
-  const toggleRule = (id: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+  const toggleRule = (id: string) => setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+
+  const signalSourceColors: Record<string, { bg: string; text: string }> = {
+    github: { bg: "#1b3158", text: "#f4f0e6" },
+    api: { bg: "#ff4b31", text: "#f4f0e6" },
+    oracle: { bg: "#9f72ff", text: "#f4f0e6" },
+    onchain: { bg: "#5acda7", text: "#1b3158" },
+    webhook: { bg: "#f2a43a", text: "#1b3158" },
   };
 
-  const signalSourceColors: Record<string, string> = {
-    github: "bg-ocean text-sand",
-    api: "bg-coral text-sand",
-    oracle: "bg-purple text-sand",
-    onchain: "bg-mint text-sand",
-    webhook: "bg-gold text-sand",
-  };
-
-  const actionTypeColors: Record<string, string> = {
-    pay: "bg-ocean text-sand",
-    tip: "bg-mint text-sand",
-    refund: "bg-coral text-sand",
-    escrow: "bg-purple text-sand",
-  };
+  const tabClass = (tab: string) => `px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-0 cursor-pointer ${
+    activeTab === tab ? "bg-white text-gray-900 shadow-sm" : "text-blue-800 hover:text-gray-900"
+  }`;
 
   return (
-    <div className="min-h-screen bg-sand">
-      {/* Header */}
-      <header className="bg-ink text-sand px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-ocean rounded-lg grid place-items-center font-black text-sm">AG</div>
+    <div style={{ minHeight: "100vh", background: "#f4f0e6" }}>
+      {/* HEADER */}
+      <header style={{ background: "#0b1a33", color: "#f4f0e6", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "36px", height: "36px", background: "#1b3158", borderRadius: "8px", display: "grid", placeItems: "center", fontWeight: 900, fontSize: "14px" }}>AG</div>
           <div>
-            <h1 className="font-bold text-lg">ArcGent</h1>
-            <p className="text-xs opacity-60">Signal-to-Payment Agent</p>
+            <h1 style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>ArcGent</h1>
+            <p style={{ fontSize: "12px", opacity: 0.6, margin: 0 }}>Signal-to-Payment Agent</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${status.running ? "bg-mint/20 text-mint" : "bg-coral/20 text-coral"}`}>
-            <span className={`w-2 h-2 rounded-full ${status.running ? "bg-mint animate-pulse" : "bg-coral"}`} />
-            {status.running ? "RUNNING" : "STOPPED"}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 12px", borderRadius: "9999px", fontSize: "12px", fontWeight: 500, background: "rgba(90,205,167,0.2)", color: "#5acda7" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#5acda7", animation: "pulse 2s infinite" }} />
+            RUNNING
           </div>
-          <div className="text-right">
-            <p className="text-xs opacity-60">Balance</p>
-            <p className="font-bold text-sm">{status.balance} USDC</p>
+          <div style={{ textAlign: "right" }}>
+            <p style={{ fontSize: "12px", opacity: 0.6, margin: 0 }}>Balance</p>
+            <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>{status.balance} USDC</p>
           </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="px-6 pt-4 flex gap-1">
-        {(["overview", "rules", "payments"] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? "bg-white text-ink shadow-sm"
-                : "text-steel hover:text-ink"
-            }`}
-          >
+      {/* TABS */}
+      <div style={{ padding: "16px 24px 0", display: "flex", gap: "4px" }}>
+        {["overview", "rules", "payments"].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab as any)} className={tabClass(tab)}>
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
 
-      <main className="px-6 pb-6">
-        {/* OVERVIEW TAB */}
+      <main style={{ padding: "0 24px 24px" }}>
+        {/* OVERVIEW */}
         {activeTab === "overview" && (
-          <div className="space-y-4">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-4 gap-4 mt-4">
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-steel mb-1">Active Rules</p>
-                <p className="text-3xl font-black text-ink">{status.rulesCount}</p>
+          <div>
+            {/* Stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginTop: "16px" }}>
+              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Active Rules</p>
+                <p style={{ fontSize: "30px", fontWeight: 800, color: "#0b1a33", margin: 0 }}>{status.rulesCount}</p>
               </div>
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-steel mb-1">Wallet Balance</p>
-                <p className="text-3xl font-black text-mint">{status.balance.split(".")[0]} USDC</p>
+              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Wallet Balance</p>
+                <p style={{ fontSize: "30px", fontWeight: 800, color: "#5acda7", margin: 0 }}>{status.balance.split(".")[0]} USDC</p>
               </div>
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-steel mb-1">Last Signal Check</p>
-                <p className="text-3xl font-black text-steel">{status.lastSignalCheck}</p>
+              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Last Signal Check</p>
+                <p style={{ fontSize: "30px", fontWeight: 800, color: "#2f578c", margin: 0 }}>{status.lastSignalCheck}</p>
               </div>
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <p className="text-xs text-steel mb-1">Network</p>
-                <p className="text-lg font-bold text-ocean">Arc Testnet</p>
-                <p className="text-xs text-steel">Chain ID: 5042002</p>
+              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Network</p>
+                <p style={{ fontSize: "18px", fontWeight: 700, color: "#1b3158", margin: 0 }}>Arc Testnet</p>
+                <p style={{ fontSize: "12px", color: "#2f578c", margin: 0 }}>Chain ID: 5042002</p>
               </div>
             </div>
 
             {/* Flow Diagram */}
-            <div className="bg-white rounded-xl p-6 shadow-sm mt-4">
-              <h3 className="font-bold text-sm mb-4">Signal → Payment Flow</h3>
-              <div className="flex items-center gap-4 text-center">
-                <div className="flex-1 bg-foam rounded-lg p-4">
-                  <div className="text-2xl mb-2">📡</div>
-                  <p className="font-bold text-sm">Listen</p>
-                  <p className="text-xs text-steel mt-1">GitHub, APIs, oracles, onchain events</p>
-                </div>
-                <div className="text-2xl text-steel">→</div>
-                <div className="flex-1 bg-surf/30 rounded-lg p-4">
-                  <div className="text-2xl mb-2">🧠</div>
-                  <p className="font-bold text-sm">Decide</p>
-                  <p className="text-xs text-steel mt-1">Rule engine evaluates conditions</p>
-                </div>
-                <div className="text-2xl text-steel">→</div>
-                <div className="flex-1 bg-mint/20 rounded-lg p-4">
-                  <div className="text-2xl mb-2">💸</div>
-                  <p className="font-bold text-sm">Pay</p>
-                  <p className="text-xs text-steel mt-1">USDC via Circle Agent Stack</p>
-                </div>
-                <div className="text-2xl text-steel">→</div>
-                <div className="flex-1 bg-sand rounded-lg p-4">
-                  <div className="text-2xl mb-2">✅</div>
-                  <p className="font-bold text-sm">Settle</p>
-                  <p className="text-xs text-steel mt-1">Sub-second finality on Arc</p>
-                </div>
+            <div style={{ background: "#fff", borderRadius: "12px", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginTop: "16px" }}>
+              <h3 style={{ fontWeight: 700, fontSize: "14px", marginBottom: "16px" }}>Signal → Payment Flow</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px", textAlign: "center" }}>
+                {[
+                  { icon: "📡", title: "Listen", desc: "GitHub, APIs, oracles, onchain events", bg: "#d6f0e8" },
+                  { icon: "🧠", title: "Decide", desc: "Rule engine evaluates conditions", bg: "rgba(172,198,233,0.3)" },
+                  { icon: "💸", title: "Pay", desc: "USDC via Circle Agent Stack", bg: "rgba(90,205,167,0.15)" },
+                  { icon: "✅", title: "Settle", desc: "Sub-second finality on Arc", bg: "#f4f0e6" },
+                ].map((step, i) => (
+                  <div key={i} style={{ flex: 1 }}>
+                    <div style={{ padding: "16px", borderRadius: "8px", background: step.bg }}>
+                      <div style={{ fontSize: "24px", marginBottom: "8px" }}>{step.icon}</div>
+                      <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>{step.title}</p>
+                      <p style={{ fontSize: "12px", color: "#2f578c", marginTop: "4px" }}>{step.desc}</p>
+                    </div>
+                    {i < 3 && <div style={{ fontSize: "24px", color: "#2f578c", margin: "0 8px" }}>→</div>}
+                  </div>
+                )).reduce((prev, curr, i) => i === 0 ? [curr] : [...prev, <span key={`arrow-${i}`} style={{ fontSize: "24px", color: "#2f578c" }}>→</span>, curr], [] as any)}
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <button
-                onClick={() => setShowNewRule(true)}
-                className="bg-ocean text-sand rounded-xl p-5 text-left hover:bg-steel transition-colors"
-              >
-                <p className="font-bold text-lg">+ New Rule</p>
-                <p className="text-xs opacity-70 mt-1">Create a new signal-to-payment rule</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", marginTop: "16px" }}>
+              <button onClick={() => setShowNewRule(true)} style={{ background: "#1b3158", color: "#f4f0e6", borderRadius: "12px", padding: "20px", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                <p style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>+ New Rule</p>
+                <p style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>Create a new signal-to-payment rule</p>
               </button>
-              <button className="bg-foam text-ocean rounded-xl p-5 text-left hover:bg-surf/30 transition-colors">
-                <p className="font-bold text-lg">Fund Wallet</p>
-                <p className="text-xs opacity-70 mt-1">Add USDC to agent wallet via faucet</p>
+              <button style={{ background: "#d6f0e8", color: "#1b3158", borderRadius: "12px", padding: "20px", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                <p style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>Fund Wallet</p>
+                <p style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>Add USDC to agent wallet via faucet</p>
               </button>
             </div>
           </div>
@@ -219,125 +144,102 @@ export default function Dashboard() {
 
         {/* RULES TAB */}
         {activeTab === "rules" && (
-          <div className="mt-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg">Rules ({rules.length})</h3>
-              <button
-                onClick={() => setShowNewRule(true)}
-                className="bg-ocean text-sand px-4 py-2 rounded-lg text-sm font-medium hover:bg-steel transition-colors"
-              >
-                + New Rule
-              </button>
+          <div style={{ marginTop: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>Rules ({rules.length})</h3>
+              <button onClick={() => setShowNewRule(true)} style={{ background: "#1b3158", color: "#f4f0e6", padding: "8px 16px", borderRadius: "8px", fontSize: "14px", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>+ New Rule</button>
             </div>
-
-            {rules.map(rule => (
-              <div key={rule.id} className="bg-white rounded-xl p-5 shadow-sm flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="font-bold">{rule.name}</h4>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${signalSourceColors[rule.signal.source] || "bg-gray-200"}`}>
-                      {rule.signal.source}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${actionTypeColors[rule.action.type] || "bg-gray-200"}`}>
-                      {rule.action.type}
-                    </span>
+            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {rules.map(rule => {
+                const sc = signalSourceColors[rule.signal.source] || { bg: "#ddd", text: "#333" };
+                const acColor = rule.action.type === "pay" ? "#1b3158" : rule.action.type === "refund" ? "#ff4b31" : "#5acda7";
+                return (
+                  <div key={rule.id} style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                        <h4 style={{ fontWeight: 700, margin: 0 }}>{rule.name}</h4>
+                        <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "9999px", fontWeight: 500, background: sc.bg, color: sc.text }}>{rule.signal.source}</span>
+                        <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "9999px", fontWeight: 500, background: acColor, color: "#fff" }}>{rule.action.type}</span>
+                      </div>
+                      <p style={{ fontSize: "14px", color: "#2f578c", margin: "0 0 8px" }}>{rule.description}</p>
+                      <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#2f578c", flexWrap: "wrap" }}>
+                        <span>Trigger: <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: "4px" }}>{rule.signal.trigger}</code></span>
+                        <span>Amount: <strong>{rule.action.amount} {rule.action.currency}</strong></span>
+                        <span>To: <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: "4px" }}>{rule.action.recipient.slice(0, 10)}...</code></span>
+                        {rule.cooldown && <span>Cooldown: {rule.cooldown}s</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => toggleRule(rule.id)}
+                      style={{ marginLeft: "16px", padding: "8px 16px", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer",
+                        background: rule.enabled ? "rgba(90,205,167,0.2)" : "#f3f4f6",
+                        color: rule.enabled ? "#5acda7" : "#9ca3af" }}>
+                      {rule.enabled ? "ON" : "OFF"}
+                    </button>
                   </div>
-                  <p className="text-sm text-steel mb-2">{rule.description}</p>
-                  <div className="flex gap-4 text-xs text-steel">
-                    <span>Trigger: <code className="bg-gray-100 px-1 rounded">{rule.signal.trigger}</code></span>
-                    <span>Amount: <strong>{rule.action.amount} {rule.action.currency}</strong></span>
-                    <span>To: <code className="bg-gray-100 px-1 rounded">{rule.action.recipient.slice(0, 10)}...</code></span>
-                    {rule.cooldown && <span>Cooldown: {rule.cooldown}s</span>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => toggleRule(rule.id)}
-                  className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    rule.enabled
-                      ? "bg-mint/20 text-mint"
-                      : "bg-gray-100 text-gray-400"
-                  }`}
-                >
-                  {rule.enabled ? "ON" : "OFF"}
-                </button>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* PAYMENTS TAB */}
         {activeTab === "payments" && (
-          <div className="mt-4">
-            <h3 className="font-bold text-lg mb-4">Payment History</h3>
-            {payments.length === 0 ? (
-              <div className="bg-white rounded-xl p-12 text-center shadow-sm">
-                <p className="text-4xl mb-3">💳</p>
-                <p className="font-bold text-steel">No payments yet</p>
-                <p className="text-sm text-steel mt-1">Payments will appear here once rules trigger</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {payments.map(payment => (
-                  <div key={payment.id} className="bg-white rounded-xl p-4 shadow-sm flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">{payment.rule}</p>
-                      <p className="text-xs text-steel">{payment.recipient}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">{payment.amount} USDC</p>
-                      <p className={`text-xs ${payment.status === "confirmed" ? "text-mint" : payment.status === "failed" ? "text-coral" : "text-gold"}`}>
-                        {payment.status}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div style={{ marginTop: "16px" }}>
+            <h3 style={{ fontWeight: 700, fontSize: "18px", margin: "0 0 16px" }}>Payment History</h3>
+            <div style={{ background: "#fff", borderRadius: "12px", padding: "48px", textAlign: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+              <p style={{ fontSize: "36px", marginBottom: "12px" }}>💳</p>
+              <p style={{ fontWeight: 700, color: "#2f578c", margin: 0 }}>No payments yet</p>
+              <p style={{ fontSize: "14px", color: "#2f578c", marginTop: "4px" }}>Payments will appear here once rules trigger</p>
+            </div>
           </div>
         )}
       </main>
 
-      {/* New Rule Modal */}
+      {/* NEW RULE MODAL */}
       {showNewRule && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowNewRule(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4">Create New Rule</h3>
-            <form className="space-y-4">
+        <div onClick={() => setShowNewRule(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px", margin: "0 16px", boxShadow: "0 25px 50px rgba(0,0,0,0.25)" }}>
+            <h3 style={{ fontWeight: 700, fontSize: "18px", margin: "0 0 16px" }}>Create New Rule</h3>
+            <form style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
-                <label className="text-xs font-medium text-steel">Rule Name</label>
-                <input type="text" placeholder="e.g., Auto Bug Bounty" className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Rule Name</label>
+                <input type="text" placeholder="e.g., Auto Bug Bounty" style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
               </div>
               <div>
-                <label className="text-xs font-medium text-steel">Signal Source</label>
-                <select className="w-full mt-1 px-3 py-2 border rounded-lg text-sm">
-                  <option value="github">GitHub</option>
-                  <option value="api">External API</option>
-                  <option value="oracle">Onchain Oracle</option>
-                  <option value="webhook">Webhook</option>
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Signal Source</label>
+                <select style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }}>
+                  <option>GitHub</option><option>External API</option><option>Onchain Oracle</option><option>Webhook</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-steel">Trigger Condition</label>
-                <input type="text" placeholder="e.g., pull_request.merged" className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+                <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Trigger Condition</label>
+                <input type="text" placeholder="e.g., pull_request.merged" style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div>
-                  <label className="text-xs font-medium text-steel">Amount (USDC)</label>
-                  <input type="number" placeholder="50" className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Amount (USDC)</label>
+                  <input type="number" placeholder="50" style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-steel">Recipient</label>
-                  <input type="text" placeholder="0x..." className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
+                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Recipient</label>
+                  <input type="text" placeholder="0x..." style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowNewRule(false)} className="flex-1 px-4 py-2 border rounded-lg text-sm font-medium">Cancel</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-ocean text-sand rounded-lg text-sm font-medium hover:bg-steel">Create Rule</button>
+              <div style={{ display: "flex", gap: "12px", paddingTop: "8px" }}>
+                <button type="button" onClick={() => setShowNewRule(false)} style={{ flex: 1, padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", background: "#fff", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, padding: "8px 16px", background: "#1b3158", color: "#f4f0e6", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" }}>Create Rule</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}} />
     </div>
   );
 }
