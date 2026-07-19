@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 const C = {
   sand: "#f4f0e6", ink: "#0b1a33", ocean: "#1b3158",
@@ -11,6 +12,20 @@ const C = {
 };
 
 export default function Landing() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setMobileMenu(false);
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#d8d5cc", fontFamily: "'DM Sans', system-ui, sans-serif", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* FIDELITY FRAME */}
@@ -23,22 +38,26 @@ export default function Landing() {
       }}>
         {/* NAV */}
         <header style={{
+          position: "sticky", top: 0, zIndex: 50,
           display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center",
           gap: 30, minHeight: 60, padding: "0 25px",
           borderBottom: `1px solid ${C.border}`,
+          background: scrolled ? "rgba(244,240,230,0.95)" : "transparent",
+          backdropFilter: scrolled ? "blur(12px)" : "none",
+          transition: "all 0.3s",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 900, letterSpacing: "-0.05em" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 900, letterSpacing: "-0.05em", textDecoration: "none", color: C.ink }}>
             <span style={{ display: "grid", placeItems: "center", width: 33, height: 33, color: "white", background: C.ocean, fontSize: 11, borderRadius: 4, letterSpacing: "-0.08em" }}>AG</span>
             ArcGent
-          </div>
+          </Link>
           <nav style={{ display: "flex", gap: 28, fontSize: 8, fontWeight: 700, color: C.steel }}>
-            {["How It Works", "Use Cases", "Docs", "Pricing", "Blog"].map(l => (
-              <span key={l} style={{ cursor: "pointer" }}>{l}</span>
+            {[{ label: "How It Works", id: "how-it-works" }, { label: "Use Cases", id: "use-cases" }, { label: "Process", id: "process" }, { label: "Agent Log", id: "agent-log" }].map(l => (
+              <span key={l.id} onClick={() => scrollTo(l.id)} style={{ cursor: "pointer", transition: "color 0.2s" }}>{l.label}</span>
             ))}
           </nav>
-          <a href="#" style={{ padding: "11px 15px", color: "white", background: C.coral, fontSize: 8, fontWeight: 900, textTransform: "uppercase", textDecoration: "none", borderRadius: 3 }}>
+          <Link href="/dashboard" style={{ padding: "11px 15px", color: "white", background: C.coral, fontSize: 8, fontWeight: 900, textTransform: "uppercase", textDecoration: "none", borderRadius: 3, transition: "background 0.2s" }}>
             Launch Agent ↗
-          </a>
+          </Link>
         </header>
 
         {/* HERO */}
@@ -53,9 +72,9 @@ export default function Landing() {
           }}>
             Autonomous agent yang menghubungkan real-world signals ke USDC payments via Arc &amp; Circle.
             <span style={{ display: "block", marginTop: 13 }}>
-              <a href="#" style={{ color: C.ocean, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>
+              <Link href="/dashboard" style={{ color: C.ocean, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>
                 Start Building ↗
-              </a>
+              </Link>
             </span>
           </div>
           <svg style={{
@@ -112,7 +131,7 @@ export default function Landing() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section style={{ padding: "20px 25px 6px", background: "color-mix(in srgb, #f4f0e6 96%, white)" }}>
+        <section id="how-it-works" style={{ padding: "20px 25px 6px", background: "color-mix(in srgb, #f4f0e6 96%, white)" }}>
           <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>How ArcGent works</div>
           {[
             { n: "01", c: C.ocean, title: "Listen", desc: "Agent monitors verified signal sources — GitHub events, onchain oracles, flight data, Strava APIs, weather feeds — any structured event stream.", link: "Explore signals" },
@@ -137,7 +156,7 @@ export default function Landing() {
               <p style={{ margin: 0, fontSize: 9, lineHeight: 1.34, color: C.ocean }}>
                 {r.desc}
                 <span style={{ display: "block", marginTop: 8 }}>
-                  <a href="#" style={{ color: r.c, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>{r.link} ↗</a>
+                  <Link href="/dashboard" style={{ color: r.c, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>{r.link} ↗</Link>
                 </span>
               </p>
             </div>
@@ -145,7 +164,7 @@ export default function Landing() {
         </section>
 
         {/* USE CASES */}
-        <section style={{ padding: "15px 25px 22px" }}>
+        <section id="use-cases" style={{ padding: "15px 25px 22px" }}>
           <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Use Cases</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 11, marginTop: 8 }}>
             {[
@@ -177,18 +196,18 @@ export default function Landing() {
                   </div>
                 )}
                 <div style={{ position: "absolute", left: 12, bottom: 10, zIndex: 3 }}>
-                  <a href="#" style={{ color: c.color, borderBottom: "1px solid currentColor", fontSize: 7, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>View case ↗</a>
+                  <Link href="/dashboard" style={{ color: c.color, borderBottom: "1px solid currentColor", fontSize: 7, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>View case ↗</Link>
                 </div>
               </article>
             ))}
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-            <a href="#" style={{ color: C.ink, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>All use cases ↗</a>
+            <Link href="/dashboard" style={{ color: C.ink, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>All use cases ↗</Link>
           </div>
         </section>
 
         {/* PROCESS */}
-        <section style={{ padding: "0 25px 20px" }}>
+        <section id="process" style={{ padding: "0 25px 20px" }}>
           <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>Agent Lifecycle</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
             {[
@@ -202,7 +221,7 @@ export default function Landing() {
                 <strong style={{ display: "block", marginBottom: 4, fontSize: 13 }}>{s.t}</strong>
                 <span style={{ display: "block", width: 130, fontSize: 8, lineHeight: 1.3, color: C.steel }}>{s.d}</span>
                 <div style={{ marginTop: 10 }}>
-                  <a href="#" style={{ color: s.c, borderBottom: "1px solid currentColor", fontSize: 6, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Learn ↗</a>
+                  <Link href="/dashboard" style={{ color: s.c, borderBottom: "1px solid currentColor", fontSize: 6, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Learn ↗</Link>
                 </div>
               </div>
             ))}
@@ -220,7 +239,7 @@ export default function Landing() {
             <h2 style={{ width: 420, margin: "16px 0 18px", fontSize: 47, lineHeight: 0.85, letterSpacing: "-0.06em" }}>Your agent holds the wallet. Your rules move the money.</h2>
             <p style={{ width: 260, fontSize: 9, lineHeight: 1.34, opacity: 0.85 }}>ArcGent runs on Circle Agent Stack. Every agent gets its own wallet. Every rule is auditable. Every payment is instant.</p>
             <div style={{ marginTop: 16 }}>
-              <a href="#" style={{ color: C.surf, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Deploy your first agent ↗</a>
+              <Link href="/dashboard" style={{ color: C.surf, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Deploy your first agent ↗</Link>
             </div>
           </div>
           <div style={{ position: "relative", minHeight: 260 }}>
@@ -244,10 +263,10 @@ export default function Landing() {
         </section>
 
         {/* NOTES */}
-        <section style={{ padding: "18px 25px 22px" }}>
+        <section id="agent-log" style={{ padding: "18px 25px 22px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Agent Log</div>
-            <a href="#" style={{ color: C.ink, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>View all ↗</a>
+            <Link href="/dashboard" style={{ color: C.ink, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>View all ↗</Link>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 11, marginTop: 10 }}>
             {[
@@ -270,7 +289,7 @@ export default function Landing() {
                 }} />
                 <time style={{ fontSize: 6, textTransform: "uppercase", color: C.steel }}>{n.tag}</time>
                 <h4 style={{ margin: "5px 0 12px", fontSize: 10, lineHeight: 1.2 }}>{n.title}</h4>
-                <a href="#" style={{ color: n.art === "stripes" ? C.coral : n.art === "ocean" ? C.ocean : n.art === "mint" ? C.mint : C.purple, borderBottom: "1px solid currentColor", fontSize: 6, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>{n.link} ↗</a>
+                <Link href="/dashboard" style={{ color: n.art === "stripes" ? C.coral : n.art === "ocean" ? C.ocean : n.art === "mint" ? C.mint : C.purple, borderBottom: "1px solid currentColor", fontSize: 6, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>{n.link} ↗</Link>
               </article>
             ))}
           </div>
@@ -286,7 +305,7 @@ export default function Landing() {
           <div>
             <p style={{ fontSize: 10, lineHeight: 1.4, color: C.steel }}>From bug bounties to flight refunds — if it can be verified, it can be paid.</p>
             <div style={{ marginTop: 14 }}>
-              <a href="#" style={{ color: C.ocean, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Launch agent ↗</a>
+              <Link href="/dashboard" style={{ color: C.ocean, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Launch agent ↗</Link>
             </div>
           </div>
           <div style={{

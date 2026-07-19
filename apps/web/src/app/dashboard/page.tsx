@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Bot, Radio, Brain, Zap, CheckCircle, CreditCard, Plus } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Bot, Radio, Brain, Zap, CheckCircle, CreditCard, Plus, RefreshCw, ExternalLink } from "lucide-react";
 
 const C = {
   sand: "#f4f0e6", ink: "#0b1a33", ocean: "#1b3158",
@@ -10,12 +10,6 @@ const C = {
   foam: "#d6f0e8", white: "#ffffff",
   border: "rgba(11,26,51,0.08)", borderLight: "rgba(11,26,51,0.04)",
 };
-
-const RULES = [
-  { id: "1", name: "Auto Bug Bounty", desc: "Pay when PR with 'fix' label is merged", source: "github", trigger: "pull_request.merged", amount: 50, recipient: "0x1234...5678", type: "pay", enabled: false, cooldown: 3600 },
-  { id: "2", name: "Flight Delay Refund", desc: "Refund when flight delayed > 2 hours", source: "api", trigger: "flight.delayed", amount: 100, recipient: "0xabcd...ef12", type: "refund", enabled: false, cooldown: 86400 },
-  { id: "3", name: "Content Tip Stream", desc: "Tip writer when content hits 1000 reads", source: "api", trigger: "page.views", amount: 5, recipient: "0x9876...5432", type: "tip", enabled: false, cooldown: 604800 },
-];
 
 const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
   github: { bg: C.ocean, text: C.sand },
@@ -32,10 +26,55 @@ const FLOW = [
 ];
 
 export default function Dashboard() {
-  const [rules, setRules] = useState(RULES);
+  const [rules, setRules] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [status, setStatus] = useState<any>(null);
   const [tab, setTab] = useState<"overview" | "rules" | "payments">("overview");
   const [showNew, setShowNew] = useState(false);
-  const toggle = (id: string) => setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+  const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [statusRes, rulesRes, paymentsRes] = await Promise.all([
+        fetch("/api/status").catch(() => null),
+        fetch("/api/rules").catch(() => null),
+        fetch("/api/payments").catch(() => null),
+      ]);
+      if (statusRes?.ok) setStatus(await statusRes.json());
+      if (rulesRes?.ok) setRules(await rulesRes.json());
+      if (paymentsRes?.ok) setPayments(await paymentsRes.json());
+      setLastRefresh(new Date());
+    } catch (e) {
+      console.error("Fetch failed:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const toggle = async (id: string) => {
+    const rule = rules.find(r => r.id === id);
+    if (!rule) return;
+    try {
+      await fetch(`/api/rules/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !rule.enabled }),
+      });
+      setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+    } catch (e) {
+      // fallback local toggle
+      setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+    }
+  };
+
+  const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n);
 
   return (
     <div style={{ minHeight: "100vh", background: C.sand, fontFamily: "'DM Sans', system-ui, sans-serif", color: C.ink }}>
@@ -52,11 +91,14 @@ export default function Dashboard() {
             <span style={{ fontSize: 11, color: C.steel }}>Dashboard</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: "rgba(90,205,167,0.1)", border: "1px solid rgba(90,205,167,0.25)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.mint, animation: "pulse 2s infinite" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: C.mint }}>RUNNING</span>
+            <button onClick={fetchData} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.steel, fontFamily: "inherit" }}>
+              <RefreshCw size={12} /> {lastRefresh.toLocaleTimeString()}
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 999, background: status?.running ? "rgba(90,205,167,0.1)" : "rgba(255,75,49,0.1)", border: `1px solid ${status?.running ? "rgba(90,205,167,0.25)" : "rgba(255,75,49,0.25)"}` }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: status?.running ? C.mint : C.coral, animation: status?.running ? "pulse 2s infinite" : "none" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: status?.running ? C.mint : C.coral }}>{status?.running ? "RUNNING" : "STOPPED"}</span>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>865M USDC</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{status?.balance ? fmt(parseFloat(status.balance.replace(/,/g, ""))) : "—"} USDC</span>
           </div>
         </div>
       </header>
@@ -82,10 +124,10 @@ export default function Dashboard() {
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
               {[
-                { label: "Active Rules", value: "4", icon: Bot },
-                { label: "Wallet Balance", value: "865M USDC", icon: CreditCard, accent: C.mint },
-                { label: "Last Signal Check", value: "2 min ago", icon: Radio },
-                { label: "Network", value: "Arc Testnet", sub: "Chain ID: 5042002", icon: Zap },
+                { label: "Active Rules", value: String(status?.rulesCount || rules.length), icon: Bot },
+                { label: "Wallet Balance", value: `${status?.balance ? fmt(parseFloat(status.balance.replace(/,/g, ""))) : "—"} USDC`, icon: CreditCard, accent: C.mint },
+                { label: "Block Number", value: status?.blockNumber ? `#${fmt(status.blockNumber)}` : "—", icon: Zap },
+                { label: "Network", value: status?.network || "Arc Testnet", sub: `Chain ID: ${status?.chainId || 5042002}`, icon: Radio },
               ].map((s, i) => (
                 <div key={i} style={{ background: C.white, borderRadius: 14, padding: "20px 20px 16px", border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
@@ -118,10 +160,10 @@ export default function Dashboard() {
                 <div style={{ width: 40, height: 40, background: "rgba(244,240,230,0.15)", borderRadius: 10, display: "grid", placeItems: "center" }}><Plus size={20} /></div>
                 <div><div style={{ fontWeight: 700, fontSize: 15 }}>New Rule</div><div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>Create a signal-to-payment rule</div></div>
               </button>
-              <button style={{ background: C.foam, color: C.ocean, borderRadius: 14, padding: "20px 22px", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 40, height: 40, background: "rgba(27,49,88,0.1)", borderRadius: 10, display: "grid", placeItems: "center" }}><CreditCard size={20} /></div>
-                <div><div style={{ fontWeight: 700, fontSize: 15 }}>Fund Wallet</div><div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>Add USDC via faucet</div></div>
-              </button>
+              <a href={`https://testnet.arcscan.app/address/${status?.walletAddress || ""}`} target="_blank" rel="noopener" style={{ background: C.foam, color: C.ocean, borderRadius: 14, padding: "20px 22px", textAlign: "left", textDecoration: "none", display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 40, height: 40, background: "rgba(27,49,88,0.1)", borderRadius: 10, display: "grid", placeItems: "center" }}><ExternalLink size={20} /></div>
+                <div><div style={{ fontWeight: 700, fontSize: 15 }}>View on Explorer</div><div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>Arc Testnet scan</div></div>
+              </a>
             </div>
           </div>
         )}
@@ -137,20 +179,20 @@ export default function Dashboard() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {rules.map(rule => {
-                const sc = SOURCE_COLORS[rule.source] || { bg: "#ddd", text: "#333" };
+                const sc = SOURCE_COLORS[rule.signal?.source] || { bg: "#ddd", text: "#333" };
                 return (
                   <div key={rule.id} style={{ background: C.white, borderRadius: 14, padding: "18px 20px", border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 6 }}>
                           <span style={{ fontWeight: 700, fontSize: 14 }}>{rule.name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: sc.bg, color: sc.text }}>{rule.source}</span>
-                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(90,205,167,0.3)", color: C.mint }}>{rule.type}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: sc.bg, color: sc.text }}>{rule.signal?.source}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(90,205,167,0.3)", color: C.mint }}>{rule.action?.type}</span>
                         </div>
-                        <p style={{ fontSize: 12, color: C.steel, margin: "0 0 8px" }}>{rule.desc}</p>
+                        <p style={{ fontSize: 12, color: C.steel, margin: "0 0 8px" }}>{rule.description}</p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, color: C.steel }}>
-                          <span>Trigger: <code style={{ background: "#f3f4f6", padding: "1px 5px", borderRadius: 4, fontSize: 10 }}>{rule.trigger}</code></span>
-                          <span style={{ fontWeight: 600, color: C.ink }}>{rule.amount} USDC</span>
+                          <span>Trigger: <code style={{ background: "#f3f4f6", padding: "1px 5px", borderRadius: 4, fontSize: 10 }}>{rule.signal?.trigger}</code></span>
+                          <span style={{ fontWeight: 600, color: C.ink }}>{rule.action?.amount} {rule.action?.currency}</span>
                           <span>Cooldown: {rule.cooldown}s</span>
                         </div>
                       </div>
@@ -170,10 +212,32 @@ export default function Dashboard() {
 
         {/* PAYMENTS */}
         {tab === "payments" && (
-          <div style={{ background: C.white, borderRadius: 14, padding: "64px 24px", textAlign: "center", border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)" }}>
-            <CreditCard size={48} color={C.steel} strokeWidth={1} style={{ opacity: 0.3, marginBottom: 16 }} />
-            <h3 style={{ fontWeight: 700, fontSize: 16, color: C.steel, margin: "0 0 4px" }}>No payments yet</h3>
-            <p style={{ fontSize: 13, color: C.steel, margin: 0 }}>Payments will appear here once rules trigger</p>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 16px" }}>Payment History</h2>
+            {payments.length === 0 ? (
+              <div style={{ background: C.white, borderRadius: 14, padding: "64px 24px", textAlign: "center", border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)" }}>
+                <CreditCard size={48} color={C.steel} strokeWidth={1} style={{ opacity: 0.3, marginBottom: 16 }} />
+                <h3 style={{ fontWeight: 700, fontSize: 16, color: C.steel, margin: "0 0 4px" }}>No payments yet</h3>
+                <p style={{ fontSize: 13, color: C.steel, margin: 0 }}>Payments will appear here once rules trigger</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {payments.map(p => (
+                  <div key={p.id} style={{ background: C.white, borderRadius: 14, padding: "18px 20px", border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{p.rule}</span>
+                        <span style={{ fontSize: 11, color: C.steel, marginLeft: 8 }}>{p.recipient}</span>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{p.amount} USDC</span>
+                        <span style={{ fontSize: 11, color: C.mint, marginLeft: 8 }}>{p.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -184,23 +248,36 @@ export default function Dashboard() {
           <div onClick={e => e.stopPropagation()} style={{ background: C.white, borderRadius: 20, padding: 28, width: "100%", maxWidth: 420, boxShadow: "0 25px 50px rgba(11,26,51,0.2)" }}>
             <h3 style={{ fontWeight: 700, fontSize: 18, margin: "0 0 20px" }}>Create New Rule</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {[{ l: "Rule Name", p: "e.g. Auto Bug Bounty" }, { l: "Trigger Condition", p: "e.g. pull_request.merged" }].map(f => (
-                <div key={f.l}><label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>{f.l}</label>
-                <input placeholder={f.p} style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none" }} /></div>
+              {[{ l: "Rule Name", p: "e.g. Auto Bug Bounty", key: "name" }, { l: "Trigger Condition", p: "e.g. pull_request.merged", key: "trigger" }].map(f => (
+                <div key={f.key}><label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>{f.l}</label>
+                <input placeholder={f.p} id={`new-${f.key}`} style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none" }} /></div>
               ))}
               <div><label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>Signal Source</label>
-                <select style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none", background: C.white }}>
-                  <option>GitHub</option><option>External API</option><option>Onchain Oracle</option><option>Webhook</option>
+                <select id="new-source" style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none", background: C.white }}>
+                  <option value="github">GitHub</option><option value="api">External API</option><option value="oracle">Onchain Oracle</option><option value="webhook">Webhook</option>
                 </select></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {[{ l: "Amount (USDC)", p: "50", t: "number" }, { l: "Recipient", p: "0x..." }].map(f => (
-                  <div key={f.l}><label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>{f.l}</label>
-                  <input type={f.t} placeholder={f.p} style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none" }} /></div>
+                {[{ l: "Amount (USDC)", p: "50", key: "amount", t: "number" }, { l: "Recipient", p: "0x...", key: "recipient" }].map(f => (
+                  <div key={f.key}><label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>{f.l}</label>
+                  <input type={f.t} placeholder={f.p} id={`new-${f.key}`} style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none" }} /></div>
                 ))}
               </div>
               <div style={{ display: "flex", gap: 10, paddingTop: 6 }}>
                 <button type="button" onClick={() => setShowNew(false)} style={{ flex: 1, padding: "10px 16px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, fontWeight: 500, background: C.white, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: "10px 16px", background: C.ocean, color: C.sand, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>Create Rule</button>
+                <button onClick={() => {
+                  const name = (document.getElementById("new-name") as HTMLInputElement)?.value;
+                  const trigger = (document.getElementById("new-trigger") as HTMLInputElement)?.value;
+                  const source = (document.getElementById("new-source") as HTMLSelectElement)?.value;
+                  const amount = (document.getElementById("new-amount") as HTMLInputElement)?.value;
+                  const recipient = (document.getElementById("new-recipient") as HTMLInputElement)?.value;
+                  if (name && trigger && amount && recipient) {
+                    fetch("/api/rules", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name, description: `Auto-created rule`, signal: { source, trigger, conditions: {} }, action: { type: "pay", recipient, amount: Number(amount), currency: "USDC" }, enabled: false, cooldown: 3600 }),
+                    }).then(() => { fetchData(); setShowNew(false); });
+                  }
+                }} style={{ flex: 1, padding: "10px 16px", background: C.ocean, color: C.sand, borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>Create Rule</button>
               </div>
             </div>
           </div>
