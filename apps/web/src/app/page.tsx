@@ -1,244 +1,226 @@
 "use client";
 
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
-// Types
-interface Rule {
-  id: string;
-  name: string;
-  description?: string;
-  signal: { source: string; trigger: string; conditions: Record<string, any> };
-  action: { type: string; recipient: string; amount: number; currency: string; memo?: string };
-  enabled: boolean;
-  cooldown?: number;
-}
+const RULES = [
+  { id: "1", name: "Auto Bug Bounty", desc: "Pay when PR with 'fix' label is merged", source: "github", trigger: "pull_request.merged", amount: 50, recipient: "0x1234...5678", type: "pay", enabled: false, cooldown: 3600 },
+  { id: "2", name: "Flight Delay Refund", desc: "Refund when flight delayed > 2 hours", source: "api", trigger: "flight.delayed", amount: 100, recipient: "0xabcd...ef12", type: "refund", enabled: false, cooldown: 86400 },
+  { id: "3", name: "Content Tip Stream", desc: "Tip writer when content hits 1000 reads", source: "api", trigger: "page.views", amount: 5, recipient: "0x9876...5432", type: "tip", enabled: false, cooldown: 604800 },
+];
 
-interface AgentStatus {
-  running: boolean;
-  rulesCount: number;
-  balance: string;
-  walletAddress: string;
-  lastSignalCheck: string;
-}
+const sourceVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  github: "default", api: "destructive", oracle: "secondary", onchain: "outline"
+};
+
+const colors = {
+  mint: "#5acda7", coral: "#ff4b31", ocean: "#1b3158", gold: "#f2a43a",
+};
 
 export default function Dashboard() {
-  const defaultRules: Rule[] = [
-    { id: "bug-bounty-1", name: "Auto Bug Bounty", description: "Pay when PR with 'fix' label is merged", signal: { source: "github", trigger: "pull_request.merged", conditions: { label: "fix" } }, action: { type: "pay", recipient: "0x1234...5678", amount: 50, currency: "USDC" }, enabled: false, cooldown: 3600 },
-    { id: "flight-delay-1", name: "Flight Delay Refund", description: "Refund when flight delayed > 2 hours", signal: { source: "api", trigger: "flight.delayed", conditions: { delay_hours: 2 } }, action: { type: "refund", recipient: "0xabcd...ef12", amount: 100, currency: "USDC" }, enabled: false, cooldown: 86400 },
-    { id: "tip-stream-1", name: "Content Tip Stream", description: "Tip writer when content hits 1000 reads", signal: { source: "api", trigger: "page.views", conditions: { threshold: 1000 } }, action: { type: "tip", recipient: "0x9876...5432", amount: 5, currency: "USDC" }, enabled: false, cooldown: 604800 },
-  ];
-
-  const defaultStatus: AgentStatus = { running: true, rulesCount: 4, balance: "865,034,306.42", walletAddress: "0x742d...a3f8", lastSignalCheck: "2 min ago" };
-
-  const [rules, setRules] = useState<Rule[]>(defaultRules);
-  const [status] = useState<AgentStatus>(defaultStatus);
-  const [activeTab, setActiveTab] = useState<"overview" | "rules" | "payments">("overview");
-  const [showNewRule, setShowNewRule] = useState(false);
-
-  const toggleRule = (id: string) => setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
-
-  const signalSourceColors: Record<string, { bg: string; text: string }> = {
-    github: { bg: "#1b3158", text: "#f4f0e6" },
-    api: { bg: "#ff4b31", text: "#f4f0e6" },
-    oracle: { bg: "#9f72ff", text: "#f4f0e6" },
-    onchain: { bg: "#5acda7", text: "#1b3158" },
-    webhook: { bg: "#f2a43a", text: "#1b3158" },
-  };
-
-  const tabClass = (tab: string) => `px-4 py-2 rounded-t-lg text-sm font-medium transition-colors border-0 cursor-pointer ${
-    activeTab === tab ? "bg-white text-gray-900 shadow-sm" : "text-blue-800 hover:text-gray-900"
-  }`;
+  const [rules, setRules] = useState(RULES);
+  const [showNew, setShowNew] = useState(false);
+  const toggle = (id: string) => setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f4f0e6" }}>
-      {/* HEADER */}
-      <header style={{ background: "#0b1a33", color: "#f4f0e6", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ width: "36px", height: "36px", background: "#1b3158", borderRadius: "8px", display: "grid", placeItems: "center", fontWeight: 900, fontSize: "14px" }}>AG</div>
-          <div>
-            <h1 style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>ArcGent</h1>
-            <p style={{ fontSize: "12px", opacity: 0.6, margin: 0 }}>Signal-to-Payment Agent</p>
+    <div className="min-h-screen bg-[#f4f0e6]">
+      {/* HEADER — match landing page style */}
+      <header className="sticky top-0 z-50 bg-[rgba(244,240,230,0.92)] backdrop-blur-sm border-b border-foreground/10">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary rounded-md grid place-items-center text-primary-foreground font-black text-xs">AG</div>
+            <span className="font-bold text-base">ArcGent</span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">Signal-to-Payment Agent</span>
           </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 12px", borderRadius: "9999px", fontSize: "12px", fontWeight: 500, background: "rgba(90,205,167,0.2)", color: "#5acda7" }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#5acda7", animation: "pulse 2s infinite" }} />
-            RUNNING
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <p style={{ fontSize: "12px", opacity: 0.6, margin: 0 }}>Balance</p>
-            <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>{status.balance} USDC</p>
+          <div className="flex items-center gap-4">
+            <Badge variant="outline" className="gap-1.5 border-mint/30 text-mint bg-mint/5">
+              <span className="w-1.5 h-1.5 rounded-full bg-mint animate-pulse" />
+              RUNNING
+            </Badge>
+            <span className="text-sm font-semibold">865M USDC</span>
           </div>
         </div>
       </header>
 
-      {/* TABS */}
-      <div style={{ padding: "16px 24px 0", display: "flex", gap: "4px" }}>
-        {["overview", "rules", "payments"].map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab as any)} className={tabClass(tab)}>
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+      <main className="max-w-6xl mx-auto px-6 py-6">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="bg-transparent border-b border-foreground/10 rounded-none pb-0 h-auto gap-1">
+            {["overview", "rules", "payments"].map(t => (
+              <TabsTrigger key={t} value={t} className="rounded-t-lg rounded-b-none data-[state=active]:bg-white data-[state=active]:shadow-sm capitalize text-xs font-medium px-4 py-2">
+                {t}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-      <main style={{ padding: "0 24px 24px" }}>
-        {/* OVERVIEW */}
-        {activeTab === "overview" && (
-          <div>
-            {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginTop: "16px" }}>
-              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Active Rules</p>
-                <p style={{ fontSize: "30px", fontWeight: 800, color: "#0b1a33", margin: 0 }}>{status.rulesCount}</p>
-              </div>
-              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Wallet Balance</p>
-                <p style={{ fontSize: "30px", fontWeight: 800, color: "#5acda7", margin: 0 }}>{status.balance.split(".")[0]} USDC</p>
-              </div>
-              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Last Signal Check</p>
-                <p style={{ fontSize: "30px", fontWeight: 800, color: "#2f578c", margin: 0 }}>{status.lastSignalCheck}</p>
-              </div>
-              <div style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-                <p style={{ fontSize: "12px", color: "#2f578c", margin: "0 0 4px" }}>Network</p>
-                <p style={{ fontSize: "18px", fontWeight: 700, color: "#1b3158", margin: 0 }}>Arc Testnet</p>
-                <p style={{ fontSize: "12px", color: "#2f578c", margin: 0 }}>Chain ID: 5042002</p>
-              </div>
+          {/* OVERVIEW */}
+          <TabsContent value="overview" className="space-y-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: "Active Rules", value: "4", color: "text-foreground" },
+                { label: "Wallet Balance", value: "865M USDC", color: "text-[#5acda7]" },
+                { label: "Last Signal Check", value: "2 min ago", color: "text-muted-foreground" },
+                { label: "Network", value: "Arc Testnet", sub: "Chain ID: 5042002", color: "text-primary" },
+              ].map((s, i) => (
+                <Card key={i} className="border-0 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{s.label}</span>
+                  </CardHeader>
+                  <CardContent>
+                    <span className={`text-2xl font-black ${s.color}`}>{s.value}</span>
+                    {s.sub && <p className="text-[11px] text-muted-foreground mt-0.5">{s.sub}</p>}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
-            {/* Flow Diagram */}
-            <div style={{ background: "#fff", borderRadius: "12px", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginTop: "16px" }}>
-              <h3 style={{ fontWeight: 700, fontSize: "14px", marginBottom: "16px" }}>Signal → Payment Flow</h3>
-              <div style={{ display: "flex", alignItems: "center", gap: "16px", textAlign: "center" }}>
-                {[
-                  { icon: "📡", title: "Listen", desc: "GitHub, APIs, oracles, onchain events", bg: "#d6f0e8" },
-                  { icon: "🧠", title: "Decide", desc: "Rule engine evaluates conditions", bg: "rgba(172,198,233,0.3)" },
-                  { icon: "💸", title: "Pay", desc: "USDC via Circle Agent Stack", bg: "rgba(90,205,167,0.15)" },
-                  { icon: "✅", title: "Settle", desc: "Sub-second finality on Arc", bg: "#f4f0e6" },
-                ].map((step, i) => (
-                  <div key={i} style={{ flex: 1 }}>
-                    <div style={{ padding: "16px", borderRadius: "8px", background: step.bg }}>
-                      <div style={{ fontSize: "24px", marginBottom: "8px" }}>{step.icon}</div>
-                      <p style={{ fontWeight: 700, fontSize: "14px", margin: 0 }}>{step.title}</p>
-                      <p style={{ fontSize: "12px", color: "#2f578c", marginTop: "4px" }}>{step.desc}</p>
+            {/* Flow diagram */}
+            <Card className="border-0 shadow-sm">
+              <CardHeader><CardTitle className="text-sm">Signal → Payment Flow</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-0">
+                  {[
+                    { icon: "📡", title: "Listen", desc: "GitHub, APIs, oracles, onchain events", bg: "bg-[#d6f0e8]" },
+                    { icon: "🧠", title: "Decide", desc: "Rule engine evaluates conditions", bg: "bg-accent/30" },
+                    { icon: "💸", title: "Pay", desc: "USDC via Circle Agent Stack", bg: "bg-mint/10" },
+                    { icon: "✅", title: "Settle", desc: "Sub-second finality on Arc", bg: "bg-muted" },
+                  ].map((step, i) => (
+                    <div key={i} className="flex sm:flex-col items-center gap-3 sm:flex-1 sm:text-center">
+                      <div className={`rounded-xl px-4 py-3 sm:p-4 flex-1 ${step.bg}`}>
+                        <span className="text-xl">{step.icon}</span>
+                        <p className="text-xs font-bold mt-1">{step.title}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{step.desc}</p>
+                      </div>
+                      {i < 3 && <span className="text-muted-foreground sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2 sm:translate-x-1/2 z-10 text-lg">→</span>}
                     </div>
-                    {i < 3 && <div style={{ fontSize: "24px", color: "#2f578c", margin: "0 8px" }}>→</div>}
-                  </div>
-                )).reduce((prev, curr, i) => i === 0 ? [curr] : [...prev, <span key={`arrow-${i}`} style={{ fontSize: "24px", color: "#2f578c" }}>→</span>, curr], [] as any)}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Quick Actions */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", marginTop: "16px" }}>
-              <button onClick={() => setShowNewRule(true)} style={{ background: "#1b3158", color: "#f4f0e6", borderRadius: "12px", padding: "20px", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                <p style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>+ New Rule</p>
-                <p style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>Create a new signal-to-payment rule</p>
-              </button>
-              <button style={{ background: "#d6f0e8", color: "#1b3158", borderRadius: "12px", padding: "20px", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                <p style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>Fund Wallet</p>
-                <p style={{ fontSize: "12px", opacity: 0.7, marginTop: "4px" }}>Add USDC to agent wallet via faucet</p>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Button onClick={() => setShowNew(true)} className="h-auto py-5 justify-start bg-primary hover:bg-primary/90 rounded-xl text-left flex-col items-start shadow-sm" size="lg">
+                <span className="text-base font-bold">+ New Rule</span>
+                <span className="text-xs opacity-70 font-normal">Create a new signal-to-payment rule</span>
+              </Button>
+              <Button variant="secondary" className="h-auto py-5 justify-start rounded-xl text-left flex-col items-start shadow-sm" size="lg">
+                <span className="text-base font-bold">Fund Wallet</span>
+                <span className="text-xs opacity-70 font-normal">Add USDC to agent wallet via faucet</span>
+              </Button>
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        {/* RULES TAB */}
-        {activeTab === "rules" && (
-          <div style={{ marginTop: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontWeight: 700, fontSize: "18px", margin: 0 }}>Rules ({rules.length})</h3>
-              <button onClick={() => setShowNewRule(true)} style={{ background: "#1b3158", color: "#f4f0e6", padding: "8px 16px", borderRadius: "8px", fontSize: "14px", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}>+ New Rule</button>
+          {/* RULES */}
+          <TabsContent value="rules" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">Rules <span className="text-muted-foreground font-normal text-sm">({rules.length})</span></h2>
+              <Button onClick={() => setShowNew(true)} size="sm">+ New Rule</Button>
             </div>
-            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
-              {rules.map(rule => {
-                const sc = signalSourceColors[rule.signal.source] || { bg: "#ddd", text: "#333" };
-                const acColor = rule.action.type === "pay" ? "#1b3158" : rule.action.type === "refund" ? "#ff4b31" : "#5acda7";
-                return (
-                  <div key={rule.id} style={{ background: "#fff", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-                        <h4 style={{ fontWeight: 700, margin: 0 }}>{rule.name}</h4>
-                        <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "9999px", fontWeight: 500, background: sc.bg, color: sc.text }}>{rule.signal.source}</span>
-                        <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "9999px", fontWeight: 500, background: acColor, color: "#fff" }}>{rule.action.type}</span>
+            <div className="space-y-3">
+              {rules.map(rule => (
+                <Card key={rule.id} className="border-0 shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-sm">{rule.name}</span>
+                          <Badge variant={sourceVariant[rule.source] || "secondary"} className="text-[10px]">{rule.source}</Badge>
+                          <Badge variant="outline" className="text-[10px] border-mint/30 text-mint">{rule.type}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{rule.desc}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>Trigger: <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">{rule.trigger}</code></span>
+                          <span className="font-semibold text-foreground">{rule.amount} USDC</span>
+                          <span>Cooldown: {rule.cooldown}s</span>
+                        </div>
                       </div>
-                      <p style={{ fontSize: "14px", color: "#2f578c", margin: "0 0 8px" }}>{rule.description}</p>
-                      <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#2f578c", flexWrap: "wrap" }}>
-                        <span>Trigger: <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: "4px" }}>{rule.signal.trigger}</code></span>
-                        <span>Amount: <strong>{rule.action.amount} {rule.action.currency}</strong></span>
-                        <span>To: <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: "4px" }}>{rule.action.recipient.slice(0, 10)}...</code></span>
-                        {rule.cooldown && <span>Cooldown: {rule.cooldown}s</span>}
-                      </div>
+                      <Button
+                        size="sm"
+                        variant={rule.enabled ? "default" : "outline"}
+                        onClick={() => toggle(rule.id)}
+                        className={rule.enabled ? "bg-[#5acda7] hover:bg-[#4ab894] text-white" : "text-muted-foreground"}
+                      >
+                        {rule.enabled ? "ON" : "OFF"}
+                      </Button>
                     </div>
-                    <button onClick={() => toggleRule(rule.id)}
-                      style={{ marginLeft: "16px", padding: "8px 16px", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer",
-                        background: rule.enabled ? "rgba(90,205,167,0.2)" : "#f3f4f6",
-                        color: rule.enabled ? "#5acda7" : "#9ca3af" }}>
-                      {rule.enabled ? "ON" : "OFF"}
-                    </button>
-                  </div>
-                );
-              })}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        {/* PAYMENTS TAB */}
-        {activeTab === "payments" && (
-          <div style={{ marginTop: "16px" }}>
-            <h3 style={{ fontWeight: 700, fontSize: "18px", margin: "0 0 16px" }}>Payment History</h3>
-            <div style={{ background: "#fff", borderRadius: "12px", padding: "48px", textAlign: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-              <p style={{ fontSize: "36px", marginBottom: "12px" }}>💳</p>
-              <p style={{ fontWeight: 700, color: "#2f578c", margin: 0 }}>No payments yet</p>
-              <p style={{ fontSize: "14px", color: "#2f578c", marginTop: "4px" }}>Payments will appear here once rules trigger</p>
-            </div>
-          </div>
-        )}
+          {/* PAYMENTS */}
+          <TabsContent value="payments">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="py-16 text-center">
+                <span className="text-4xl block mb-4">💳</span>
+                <h3 className="font-bold text-muted-foreground">No payments yet</h3>
+                <p className="text-xs text-muted-foreground mt-1">Payments will appear here once rules trigger</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
 
-      {/* NEW RULE MODAL */}
-      {showNewRule && (
-        <div onClick={() => setShowNewRule(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "420px", margin: "0 16px", boxShadow: "0 25px 50px rgba(0,0,0,0.25)" }}>
-            <h3 style={{ fontWeight: 700, fontSize: "18px", margin: "0 0 16px" }}>Create New Rule</h3>
-            <form style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Rule Name</label>
-                <input type="text" placeholder="e.g., Auto Bug Bounty" style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
+      {/* NEW RULE DIALOG */}
+      <Dialog open={showNew} onOpenChange={setShowNew}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Create New Rule</DialogTitle></DialogHeader>
+          <form className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Rule Name</Label>
+              <Input placeholder="e.g. Auto Bug Bounty" className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Signal Source</Label>
+              <Select>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select source" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="github">GitHub</SelectItem>
+                  <SelectItem value="api">External API</SelectItem>
+                  <SelectItem value="oracle">Onchain Oracle</SelectItem>
+                  <SelectItem value="webhook">Webhook</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Trigger Condition</Label>
+              <Input placeholder="e.g. pull_request.merged" className="h-9 text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Amount (USDC)</Label>
+                <Input type="number" placeholder="50" className="h-9 text-sm" />
               </div>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Signal Source</label>
-                <select style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }}>
-                  <option>GitHub</option><option>External API</option><option>Onchain Oracle</option><option>Webhook</option>
-                </select>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Recipient</Label>
+                <Input placeholder="0x..." className="h-9 text-sm" />
               </div>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Trigger Condition</label>
-                <input type="text" placeholder="e.g., pull_request.merged" style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Amount (USDC)</label>
-                  <input type="number" placeholder="50" style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#2f578c" }}>Recipient</label>
-                  <input type="text" placeholder="0x..." style={{ width: "100%", marginTop: "4px", padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }} />
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: "12px", paddingTop: "8px" }}>
-                <button type="button" onClick={() => setShowNewRule(false)} style={{ flex: 1, padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "14px", background: "#fff", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: "8px 16px", background: "#1b3158", color: "#f4f0e6", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" }}>Create Rule</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setShowNew(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1">Create Rule</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
+        .text-mint { color: #5acda7; }
+        .bg-mint\\/5 { background-color: rgba(90,205,167,0.05); }
+        .bg-mint\\/10 { background-color: rgba(90,205,167,0.1); }
+        .border-mint\\/30 { border-color: rgba(90,205,167,0.3); }
       `}} />
     </div>
   );
