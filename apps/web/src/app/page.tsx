@@ -12,22 +12,14 @@ const C = {
 
 export default function Landing() {
   return (
-    <div style={{ minHeight: "100vh", background: "#d8d5cc", fontFamily: "'DM Sans', system-ui, sans-serif", padding: "20px 16px 60px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      {/* INTRO */}
-      <div style={{ maxWidth: 820, margin: "0 auto 18px", color: C.ink, width: "100%" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px" }}>ArcGent — Signal-to-Payment Autonomous Agent</h2>
-        <p style={{ fontSize: 12, opacity: 0.7 }}>Editorial landing page · Arc + Circle Agent Stack · Ocean + Sand palette</p>
-      </div>
-
+    <div style={{ minHeight: "100vh", background: "#d8d5cc", fontFamily: "'DM Sans', system-ui, sans-serif", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* FIDELITY FRAME */}
       <div style={{
         width: "min(100%, 820px)", margin: "0 auto", overflow: "hidden",
-        border: `1px solid ${C.borderS}`,
         background: C.sand,
         backgroundImage: "radial-gradient(rgba(11,26,51,0.08) 0.7px, transparent 0.7px)",
         backgroundSize: "16px 16px",
         color: C.ink,
-        boxShadow: "0 32px 80px rgba(11,26,51,0.25)",
       }}>
         {/* NAV */}
         <header style={{
