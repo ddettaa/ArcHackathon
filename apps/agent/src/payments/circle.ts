@@ -60,8 +60,8 @@ export class CircleWallet {
                 address: this.account?.address || '0x0000000000000000000000000000000000000000',
             });
             
-            // Convert from wei (18 decimals) to USDC (6 decimals for display)
-            const balanceUSDC = Number(balance) / 1e18;
+            // Convert from native units (6 decimals on Arc for USDC)
+            const balanceUSDC = Number(balance) / 1e6;
             return balanceUSDC.toFixed(6);
         } catch (error) {
             logger.error('Failed to get balance:', error);
