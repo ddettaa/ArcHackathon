@@ -18,6 +18,7 @@ const C: Record<string, string> = {
 interface Agent {
   id: string; name: string; walletAddress: string;
   reputation: number; totalEarned: number; totalSpent: number;
+  status?: string; completedTasks?: number; responseTime?: string;
   services: Service[];
 }
 interface Service {
@@ -50,10 +51,11 @@ export default function MarketplacePage() {
       ]);
       if (agentsRes.ok) {
         const data = await agentsRes.json();
-        setAgents(data.map((a: Agent) => ({
-          ...a, status: "online",
-          completedTasks: Math.floor(Math.random() * 400) + 50,
-          responseTime: `${Math.floor(Math.random() * 20) + 3}s`
+        setAgents(data.map((a: any) => ({
+          ...a,
+          status: a.status || "online",
+          completedTasks: a.completedTasks || 0,
+          responseTime: a.responseTime || "—",
         })));
       }
       if (statsRes.ok) setStats(await statsRes.json());
@@ -239,7 +241,7 @@ export default function MarketplacePage() {
                         </span>
                       </div>
                       <div style={{ display: "flex", gap: 10, fontSize: 10, color: C.steel, marginTop: 3 }}>
-                        <span>(agent as any).completedTasks tasks · (agent as any).responseTime</span>
+                        <span>{agent.completedTasks} tasks · {agent.responseTime}</span>
                       </div>
                     </div>
                   </div>

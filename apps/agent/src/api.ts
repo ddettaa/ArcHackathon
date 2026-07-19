@@ -11,6 +11,8 @@ import { getAgentPayments } from "./agents/payments.js";
 import { createConfig } from "./utils/config.js";
 import { getDb, schema } from "./db/index.js";
 import { sql, eq } from "drizzle-orm";
+import { readFileSync, existsSync } from "fs";
+import { getPaymaster } from "./payments/paymaster.js";
 
 const app = new Hono();
 app.use("/*", cors());
@@ -52,6 +54,59 @@ app.get("/api/approvals", (c) => {
   if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
   const approval = getApprovalEngine();
   return c.json(approval.getAll());
+});
+
+// Real payment history with daily aggregation for analytics
+app.get("/api/payments/history", async (c) => {
+  if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
+  const db = getDb();
+  
+  // Get all payments with real timestamps
+  const allPayments = await db.select().from(schema.payments).all();
+  
+  // Group by date
+  const dailyMap = new Map<string, { volume: number; transactions: number }>();
+  for (const p of allPayments) {
+    const date = p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "unknown";
+    const existing = dailyMap.get(date) || { volume: 0, transactions: 0 };
+    existing.volume += p.amount;
+    existing.transactions += 1;
+    dailyMap.set(date, existing);
+  }
+  
+  // Sort by date, take last 7
+  const dailyVolume = Array.from(dailyMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-7)
+    .map(([date, data]) => ({ date, ...data }));
+  
+  // Get A2A payments for activity feed
+  let agentPayments: any[] = [];
+  try {
+    const config = createConfig();
+    const a2a = getAgentPayments(config);
+    agentPayments = a2a.getPayments();
+  } catch { /* A2A not initialized yet */ }
+  
+  const activity = allPayments.map(p => ({
+    id: p.id,
+    type: p.fromAgent ? "spent" : "earned",
+    agentId: p.fromAgent || p.ruleId || "system",
+    amount: p.amount,
+    service: p.memo || "payment",
+    timestamp: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    txHash: p.txHash,
+    status: p.status,
+  })).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  
+  return c.json({
+    totalVolume: allPayments.reduce((s, p) => s + p.amount, 0),
+    totalPayments: allPayments.length,
+    averageAmount: allPayments.length ? allPayments.reduce((s, p) => s + p.amount, 0) / allPayments.length : 0,
+    dailyVolume,
+    activity,
+    agentPayments: (agentPayments || []).length,
+  });
 });
 
 app.get("/api/approvals/pending", (c) => {
@@ -406,6 +461,47 @@ async function main() {
     );
   `);
   console.log("🗄️ DB ready");
+
+  // Seed rules + payments from old JSON if DB is empty
+  const ruleCount = db.select({ c: sql`count(*)` }).from(schema.rules).get();
+  if (!ruleCount?.c) {
+    const rulesPath = "./config/rules.json";
+    if (existsSync(rulesPath)) {
+      const oldRules = JSON.parse(readFileSync(rulesPath, "utf-8"));
+      for (const r of oldRules) {
+        const id = r.id || `rule_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        await db.insert(schema.rules).values({
+          id, name: r.name || "Unnamed",
+          signalSource: r.signal?.source || "github",
+          signalTrigger: r.signal?.trigger || "",
+          signalConditions: r.signal?.conditions || {},
+          actionType: r.action?.type || "pay",
+          actionRecipient: r.action?.recipient || "0x",
+          actionAmount: r.action?.amount || 0,
+          enabled: r.enabled !== false,
+          cooldown: r.cooldown || null,
+        }).onConflictDoNothing().run();
+      }
+      console.log(`📋 Migrated ${oldRules.length} rules from JSON → DB`);
+    }
+    
+    const paymentsPath = "./config/payments.json";
+    if (existsSync(paymentsPath)) {
+      const oldPayments = JSON.parse(readFileSync(paymentsPath, "utf-8"));
+      for (const p of oldPayments) {
+        await db.insert(schema.payments).values({
+          id: p.id || `pay_${Date.now()}`,
+          ruleId: p.ruleId || null,
+          to: p.to || "0x",
+          amount: p.amount < 1 ? p.amount * 1e6 : p.amount, // convert from USDC to micro-USDC if needed
+          status: p.status || "confirmed",
+          txHash: p.txHash || null,
+          createdAt: p.timestamp ? new Date(p.timestamp) : undefined,
+        }).onConflictDoNothing().run();
+      }
+      console.log(`💰 Migrated ${oldPayments.length} payments from JSON → DB`);
+    }
+  }
 
   // Seed agents/services if empty
   const agentCount = db.select({ c: sql`count(*)` }).from(schema.agents).get();

@@ -39,48 +39,53 @@ interface PaymentStats {
 interface ActivityItem {
   id: string; type: "earned" | "spent";
   agentId: string; amount: number; service: string;
-  timestamp: string;
+  timestamp: string; txHash?: string; status?: string;
+}
+
+interface HistoryResponse {
+  totalVolume: number;
+  totalPayments: number;
+  averageAmount: number;
+  dailyVolume: Array<{ date: string; volume: number; transactions: number }>;
+  activity: ActivityItem[];
 }
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<PaymentStats | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [timeRange, setTimeRange] = useState("7d");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
-  // Mock activity data with pagination
-  const allActivity: ActivityItem[] = Array.from({ length: 24 }, (_, i) => ({
-    id: `tx_${i + 1}`,
-    type: i % 3 === 2 ? "spent" as const : "earned" as const,
-    agentId: ["content-evaluator", "translation-agent", "security-auditor", "data-processor", "analytics-agent"][i % 5],
-    amount: Math.floor(Math.random() * 8000) + 200,
-    service: ["Content Quality Check", "Text Translation", "Security Scan", "Data Analysis", "Report Generation", "Contract Audit"][i % 6],
-    timestamp: new Date(2026, 6, 19 - Math.floor(i / 4), 8 + Math.floor(i * 0.7), Math.floor(Math.random() * 60)).toISOString(),
-  }));
-
-  const totalPages = Math.ceil(allActivity.length / ITEMS_PER_PAGE);
-  const pageActivity = allActivity.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.max(Math.ceil(activity.length / ITEMS_PER_PAGE), 1);
+  const pageActivity = activity.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   useEffect(() => { fetchAnalytics(); }, [timeRange]);
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch("/api/agents/stats");
+      const res = await fetch("/api/payments/history");
       if (res.ok) {
-        const data = await res.json();
+        const data: HistoryResponse = await res.json();
         setStats({
-          ...data,
-          averageAmount: data.totalVolume / Math.max(data.totalPayments, 1),
-          dailyVolume: [
-            { date: "2026-07-13", volume: 1200, transactions: 3 },
-            { date: "2026-07-14", volume: 3400, transactions: 7 },
-            { date: "2026-07-15", volume: 2100, transactions: 5 },
-            { date: "2026-07-16", volume: 5600, transactions: 12 },
-            { date: "2026-07-17", volume: 4300, transactions: 9 },
-            { date: "2026-07-18", volume: 7800, transactions: 15 },
-            { date: "2026-07-19", volume: 6200, transactions: 11 },
-          ]
+          totalVolume: data.totalVolume,
+          totalPayments: data.totalPayments,
+          averageAmount: data.averageAmount,
+          topEarners: [], // computed from agent stats separately
+          topSpenders: [],
+          dailyVolume: data.dailyVolume,
         });
+        setActivity(data.activity);
+      }
+      // Also fetch agent stats for top earners/spenders
+      const statsRes = await fetch("/api/agents/stats");
+      if (statsRes.ok) {
+        const agentStats = await statsRes.json();
+        setStats(prev => prev ? {
+          ...prev,
+          topEarners: agentStats.topEarners || [],
+          topSpenders: agentStats.topSpenders || [],
+        } : prev);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -108,7 +113,7 @@ export default function AnalyticsPage() {
       <NavBar
         ctaLabel="Export"
         ctaHref="#"
-        ctaClick={() => downloadCSV(allActivity, `arcgent-analytics-${timeRange}.csv`)}
+        ctaClick={() => downloadCSV(activity, `arcgent-analytics-${timeRange}.csv`)}
         extraLinks={[
           { href: "#", label: `${timeRange === "24h" ? "24H" : timeRange === "7d" ? "7D" : "30D"}` }
         ]}
@@ -238,7 +243,7 @@ export default function AnalyticsPage() {
             {/* Pagination */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderTop: "1px solid rgba(11,26,51,0.1)" }}>
               <div style={{ fontSize: 11, color: C.steel }}>
-                Page <strong style={{ color: C.ink }}>{page}</strong> of {totalPages} · Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, allActivity.length)} of {allActivity.length}
+                Page <strong style={{ color: C.ink }}>{page}</strong> of {totalPages} · Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, activity.length)} of {activity.length}
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
