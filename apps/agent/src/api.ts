@@ -7,6 +7,7 @@ import { getApprovalEngine, type ApprovalRequest } from "./approval/engine.js";
 import { requireAdmin, requireOperator, requireViewer, extractKey, getAuth } from "./auth/keys.js";
 import type { SignalContext } from "./ai/evaluator.js";
 import { getEvaluator } from "./ai/evaluator.js";
+import { TEMPLATES, instantiateTemplate } from "./rules/templates.js";
 
 const app = new Hono();
 app.use("/*", cors());
@@ -54,6 +55,25 @@ app.get("/api/approvals/pending", (c) => {
   if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
   const approval = getApprovalEngine();
   return c.json(approval.getPending());
+});
+
+// --- TEMPLATES ---
+app.get("/api/templates", (c) => {
+  return c.json(TEMPLATES);
+});
+
+app.post("/api/templates/:id/instantiate", async (c) => {
+  if (!requireOperator(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
+  const templateId = c.req.param("id");
+  const formData = await c.req.json();
+  try {
+    const rule = instantiateTemplate(templateId, formData);
+    const agent = getAgent();
+    const created = agent.addRule(rule);
+    return c.json(created, 201);
+  } catch (e: any) {
+    return c.json({ error: e.message }, 400);
+  }
 });
 
 // --- OPERATOR (can create/modify rules, trigger webhooks) ---
