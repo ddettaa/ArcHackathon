@@ -42,6 +42,7 @@ export default function NavBar({
     { href: "/dashboard", label: "Dashboard" },
     { href: "/marketplace", label: "Marketplace" },
     { href: "/analytics", label: "Analytics" },
+    { href: "/commlog", label: "A2A Log" },
   ];
 
   const allLinks = [...defaultLinks, ...extraLinks];

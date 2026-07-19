@@ -33,8 +33,26 @@ app.get("/api/status", async (c) => {
   const agent = getAgent();
   const balance = await agent.getBalance();
   const state = agent.getState();
-  // Don't leak sensitive info
   return c.json({ ...state, balance, pendingApprovals: state.pendingApprovals?.length });
+});
+
+// --- RISK MANAGEMENT ---
+app.get("/api/risk", (c) => {
+  if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
+  const agent = getAgent();
+  return c.json(agent.getRiskStatus());
+});
+
+app.post("/api/risk/limits", async (c) => {
+  if (!requireAdmin(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
+  const agent = getAgent();
+  const body = await c.req.json();
+  const { dailyCap, perRuleCap, perTxMax, cooldownMs } = body;
+  if (dailyCap !== undefined) agent.riskLimits.dailyCap = dailyCap;
+  if (perRuleCap !== undefined) agent.riskLimits.perRuleCap = perRuleCap;
+  if (perTxMax !== undefined) agent.riskLimits.perTxMax = perTxMax;
+  if (cooldownMs !== undefined) agent.riskLimits.cooldownMs = cooldownMs;
+  return c.json({ ok: true, limits: agent.riskLimits });
 });
 
 // --- VIEWER (any authenticated user) ---
@@ -81,11 +99,12 @@ app.get("/api/payments/history", async (c) => {
     .map(([date, data]) => ({ date, ...data }));
   
   // Get A2A payments for activity feed
-  let agentPayments: any[] = [];
+  let agentPayments: any[] | Promise<any[]> = [];
   try {
     const config = createConfig();
     const a2a = getAgentPayments(config);
-    agentPayments = a2a.getPayments();
+    const result = await a2a.getPayments();
+    agentPayments = Array.isArray(result) ? result : [];
   } catch { /* A2A not initialized yet */ }
   
   const activity = allPayments.map(p => ({

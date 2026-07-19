@@ -367,6 +367,11 @@ export default function Dashboard() {
           <AIEvaluationPanel />
         </ForRole>
 
+        {/* RISK MANAGEMENT */}
+        <ForRole role="operator">
+          <RiskPanel />
+        </ForRole>
+
         {/* RULES */}
         <div style={{ background: "white", borderRadius: 12, border: "1px solid rgba(11,26,51,0.08)", padding: 24, marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -653,6 +658,104 @@ function AIEvaluationPanel() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- RISK MANAGEMENT PANEL ---
+function RiskPanel() {
+  const [risk, setRisk] = useState<any>(null);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ dailyCap: "", perTxMax: "", perRuleCap: "" });
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => { fetchRisk(); const t = setInterval(fetchRisk, 10000); return () => clearInterval(t); }, []);
+
+  const fetchRisk = async () => {
+    try {
+      const res = await fetch("/api/risk");
+      if (res.ok) setRisk(await res.json());
+    } catch {}
+  };
+
+  const fmtUsdc = (micro: number) => (micro / 1_000_000).toFixed(4);
+  const utilization = risk?.utilization || 0;
+  const barColor = utilization > 80 ? C.coral : utilization > 50 ? C.gold : C.mint;
+
+  const saveLimits = async () => {
+    const body: any = {};
+    if (form.dailyCap) body.dailyCap = parseFloat(form.dailyCap) * 1_000_000;
+    if (form.perTxMax) body.perTxMax = parseFloat(form.perTxMax) * 1_000_000;
+    if (form.perRuleCap) body.perRuleCap = parseFloat(form.perRuleCap) * 1_000_000;
+    try {
+      const res = await fetch("/api/risk/limits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) { setMsg("✅ Limits updated"); setEditing(false); fetchRisk(); }
+      else setMsg("❌ Failed");
+    } catch { setMsg("❌ Error"); }
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  if (!risk) return null;
+
+  return (
+    <div style={{ background: "white", borderRadius: 12, border: "1px solid rgba(11,26,51,0.08)", padding: 24, marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: C.steel }}>🛡️ Risk Management</div>
+        <button onClick={() => setEditing(!editing)} style={{ padding: "6px 12px", background: C.ocean, color: "white", border: "none", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
+          {editing ? "Cancel" : "Edit Limits"}
+        </button>
+      </div>
+
+      {msg && <div style={{ padding: "8px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, marginBottom: 12, background: msg.startsWith("✅") ? "rgba(90,205,167,0.1)" : "rgba(255,75,49,0.1)", color: msg.startsWith("✅") ? C.mint : C.coral }}>{msg}</div>}
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 6 }}>
+          <span style={{ color: C.steel }}>Daily Spending</span>
+          <span style={{ fontWeight: 800, color: C.ink }}>{fmtUsdc(risk.dailySpent)} / {fmtUsdc(risk.dailyCap)} USDC</span>
+        </div>
+        <div style={{ height: 8, background: "rgba(11,26,51,0.06)", borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${Math.min(utilization, 100)}%`, background: barColor, borderRadius: 4, transition: "width 0.5s" }} />
+        </div>
+        <div style={{ fontSize: 9, color: C.steel, marginTop: 4 }}>{utilization}% utilized · {fmtUsdc(risk.dailyRemaining)} remaining</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: editing ? 16 : 0 }}>
+        <div style={{ padding: "12px 14px", background: "rgba(11,26,51,0.02)", borderRadius: 8, border: "1px solid rgba(11,26,51,0.06)" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: C.steel, marginBottom: 4 }}>Daily Cap</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.ink }}>{fmtUsdc(risk.dailyCap)}</div>
+          <div style={{ fontSize: 9, color: C.steel }}>USDC/day total</div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "rgba(11,26,51,0.02)", borderRadius: 8, border: "1px solid rgba(11,26,51,0.06)" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: C.steel, marginBottom: 4 }}>Per TX Max</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.ink }}>{fmtUsdc(risk.perTxMax)}</div>
+          <div style={{ fontSize: 9, color: C.steel }}>USDC per transaction</div>
+        </div>
+        <div style={{ padding: "12px 14px", background: "rgba(11,26,51,0.02)", borderRadius: 8, border: "1px solid rgba(11,26,51,0.06)" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: C.steel, marginBottom: 4 }}>Per Rule Cap</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.ink }}>{fmtUsdc(risk.perRuleCap)}</div>
+          <div style={{ fontSize: 9, color: C.steel }}>USDC/day per rule</div>
+        </div>
+      </div>
+
+      {editing && (
+        <div style={{ padding: 16, background: "rgba(11,26,51,0.02)", borderRadius: 8, border: "1px solid rgba(11,26,51,0.06)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>Daily Cap (USDC)</label>
+              <input value={form.dailyCap} onChange={e => setForm({...form, dailyCap: e.target.value})} placeholder={fmtUsdc(risk.dailyCap)} style={{ width: "100%", padding: "8px 10px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 12, marginTop: 4 }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>Per TX Max (USDC)</label>
+              <input value={form.perTxMax} onChange={e => setForm({...form, perTxMax: e.target.value})} placeholder={fmtUsdc(risk.perTxMax)} style={{ width: "100%", padding: "8px 10px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 12, marginTop: 4 }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 9, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>Per Rule Cap (USDC)</label>
+              <input value={form.perRuleCap} onChange={e => setForm({...form, perRuleCap: e.target.value})} placeholder={fmtUsdc(risk.perRuleCap)} style={{ width: "100%", padding: "8px 10px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 12, marginTop: 4 }} />
+            </div>
+          </div>
+          <button onClick={saveLimits} style={{ padding: "10px 20px", background: C.mint, color: "white", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Save Limits</button>
+        </div>
+      )}
     </div>
   );
 }

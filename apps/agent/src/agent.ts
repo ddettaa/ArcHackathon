@@ -39,6 +39,21 @@ export class ArcGentAgent {
   private startTime: Date = new Date();
   private killed = false;
   private db: ReturnType<typeof getDb>;
+  
+  // Risk management — spending limits
+  private dailySpent = 0;
+  private dailyResetDate = "";
+  private ruleSpentToday: Map<string, number> = new Map();
+  
+  // Configurable limits (micro-USDC, 1 USDC = 1_000_000)
+  public riskLimits = {
+    dailyCap: 10_000_000,          // 10 USDC/day total
+    perRuleCap: 5_000_000,         // 5 USDC/day per rule
+    perTxMax: 2_000_000,           // 2 USDC max per single tx
+    cooldownMs: 60_000,            // 1 min between payments per rule
+    autoApproveMax: 10_000_000,    // payments under this go AUTO
+    requireApprovalAbove: 10_000_000, // payments above this need MANUAL
+  };
 
   constructor(config?: Partial<Config>) {
     this.config = createConfig();
@@ -52,13 +67,62 @@ export class ArcGentAgent {
 
   getState() {
     const approval = getApprovalEngine();
+    this.resetDailyIfNeeded();
     return {
       status: this.killed ? "KILLED" as const : this.running ? "RUNNING" as const : "STOPPED" as const,
       signalCheckCount: this.signalCheckCount,
       paymentCount: this.paymentCount,
       uptime: Math.floor((Date.now() - this.startTime.getTime()) / 1000),
       pendingApprovals: approval.getPending(),
+      risk: this.getRiskStatus(),
     };
+  }
+
+  /** Risk management status */
+  getRiskStatus() {
+    this.resetDailyIfNeeded();
+    return {
+      dailySpent: this.dailySpent,
+      dailyCap: this.riskLimits.dailyCap,
+      dailyRemaining: Math.max(0, this.riskLimits.dailyCap - this.dailySpent),
+      perTxMax: this.riskLimits.perTxMax,
+      perRuleCap: this.riskLimits.perRuleCap,
+      ruleSpending: Object.fromEntries(this.ruleSpentToday),
+      utilization: Math.round((this.dailySpent / this.riskLimits.dailyCap) * 100),
+    };
+  }
+
+  /** Check if a payment is allowed by risk limits */
+  checkRiskLimits(ruleId: string, amount: number): { allowed: boolean; reason?: string } {
+    this.resetDailyIfNeeded();
+    if (amount > this.riskLimits.perTxMax) {
+      return { allowed: false, reason: `Amount ${amount} exceeds per-tx max ${this.riskLimits.perTxMax}` };
+    }
+    if (this.dailySpent + amount > this.riskLimits.dailyCap) {
+      return { allowed: false, reason: `Daily cap reached (${this.dailySpent}/${this.riskLimits.dailyCap})` };
+    }
+    const ruleSpent = this.ruleSpentToday.get(ruleId) || 0;
+    if (ruleSpent + amount > this.riskLimits.perRuleCap) {
+      return { allowed: false, reason: `Rule ${ruleId} daily cap reached (${ruleSpent}/${this.riskLimits.perRuleCap})` };
+    }
+    return { allowed: true };
+  }
+
+  /** Record a payment against risk limits */
+  recordSpending(ruleId: string, amount: number) {
+    this.resetDailyIfNeeded();
+    this.dailySpent += amount;
+    this.ruleSpentToday.set(ruleId, (this.ruleSpentToday.get(ruleId) || 0) + amount);
+  }
+
+  /** Reset daily counters at midnight UTC */
+  private resetDailyIfNeeded() {
+    const today = new Date().toISOString().split("T")[0];
+    if (this.dailyResetDate !== today) {
+      this.dailySpent = 0;
+      this.ruleSpentToday.clear();
+      this.dailyResetDate = today;
+    }
   }
 
   getRules() {
