@@ -191,6 +191,20 @@ export default function Dashboard() {
             {isKilled ? <ShieldAlert size={18} color="white" /> : <Bot size={18} color="white" />}
           </div>
           <span style={{ fontSize: 18, fontWeight: 900, color: "white", letterSpacing: "-0.03em" }}>ArcGent</span>
+          <div style={{ display: "flex", gap: 8, marginLeft: 20 }}>
+            <a href="/marketplace" style={{ 
+              padding: "6px 12px", background: "rgba(255,255,255,0.1)", color: "white", 
+              textDecoration: "none", borderRadius: 4, fontSize: 10, fontWeight: 700 
+            }}>
+              Marketplace
+            </a>
+            <a href="/analytics" style={{ 
+              padding: "6px 12px", background: "rgba(255,255,255,0.1)", color: "white", 
+              textDecoration: "none", borderRadius: 4, fontSize: 10, fontWeight: 700 
+            }}>
+              Analytics
+            </a>
+          </div>
           <span style={{
             padding: "4px 12px", borderRadius: 999, fontSize: 10, fontWeight: 700,
             background: isKilled ? C.coral : status?.status === "RUNNING" ? C.mint : C.gold,
