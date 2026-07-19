@@ -2,8 +2,12 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ArcGent — Signal-to-Payment Agent',
-  description: 'Autonomous agent economy on Arc + Circle',
+  title: 'ArcGent — Autonomous Signal-to-Payment Agents',
+  description: 'Agents that listen to real-world signals and execute USDC payments autonomously via Arc + Circle Agent Stack',
+  openGraph: {
+    title: 'ArcGent',
+    description: 'Signal-to-payment autonomous agents on Arc',
+  },
 };
 
 export default function RootLayout({

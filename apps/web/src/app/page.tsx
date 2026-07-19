@@ -1,336 +1,324 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Bot, Radio, Brain, Zap, CheckCircle, CreditCard, Plus, Power,
-} from "lucide-react";
+import Link from "next/link";
 
 const C = {
-  bg: "#f4f0e6",
-  ink: "#0b1a33",
-  ocean: "#1b3158",
-  steel: "#2f578c",
-  surf: "#acc6e9",
-  mint: "#5acda7",
-  coral: "#ff4b31",
-  foam: "#d6f0e8",
-  white: "#ffffff",
-  border: "rgba(11,26,51,0.08)",
-  borderLight: "rgba(11,26,51,0.04)",
+  sand: "#f4f0e6", ink: "#0b1a33", ocean: "#1b3158",
+  steel: "#2f578c", surf: "#acc6e9", coral: "#ff4b31",
+  mint: "#5acda7", gold: "#f2a43a", purple: "#9f72ff",
+  foam: "#d6f0e8", border: "rgba(11,26,51,0.08)",
+  borderL: "rgba(11,26,51,0.15)", borderS: "rgba(11,26,51,0.28)",
 };
 
-const RULES = [
-  { id: "1", name: "Auto Bug Bounty", desc: "Pay when PR with 'fix' label is merged", source: "github", trigger: "pull_request.merged", amount: 50, recipient: "0x1234...5678", type: "pay", enabled: false, cooldown: 3600 },
-  { id: "2", name: "Flight Delay Refund", desc: "Refund when flight delayed > 2 hours", source: "api", trigger: "flight.delayed", amount: 100, recipient: "0xabcd...ef12", type: "refund", enabled: false, cooldown: 86400 },
-  { id: "3", name: "Content Tip Stream", desc: "Tip writer when content hits 1000 reads", source: "api", trigger: "page.views", amount: 5, recipient: "0x9876...5432", type: "tip", enabled: false, cooldown: 604800 },
-];
-
-const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
-  github: { bg: C.ocean, text: C.bg },
-  api: { bg: C.coral, text: C.bg },
-  oracle: { bg: C.surf, text: C.ink },
-  webhook: { bg: "#f2a43a", text: C.ink },
-};
-
-const FLOW = [
-  { icon: Radio, title: "Listen", desc: "GitHub, APIs, oracles, onchain events", bg: C.foam, color: C.ocean },
-  { icon: Brain, title: "Decide", desc: "Rule engine evaluates conditions", bg: "rgba(172,198,233,0.25)", color: C.steel },
-  { icon: Zap, title: "Pay", desc: "USDC via Circle Agent Stack", bg: "rgba(90,205,167,0.12)", color: C.mint },
-  { icon: CheckCircle, title: "Settle", desc: "Sub-second finality on Arc", bg: C.bg, color: C.ocean },
-];
-
-export default function Dashboard() {
-  const [rules, setRules] = useState(RULES);
-  const [tab, setTab] = useState<"overview" | "rules" | "payments">("overview");
-  const [showNew, setShowNew] = useState(false);
-
-  const toggle = (id: string) => setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
-
+export default function Landing() {
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif", color: C.ink }}>
-      {/* HEADER — sticky like landing page */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(244,240,230,0.92)", backdropFilter: "blur(12px)",
-        borderBottom: `1px solid ${C.border}`,
+    <div style={{ minHeight: "100vh", background: "#d8d5cc", fontFamily: "'DM Sans', system-ui, sans-serif", padding: "20px 16px 60px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {/* INTRO */}
+      <div style={{ maxWidth: 820, margin: "0 auto 18px", color: C.ink, width: "100%" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px" }}>ArcGent — Signal-to-Payment Autonomous Agent</h2>
+        <p style={{ fontSize: 12, opacity: 0.7 }}>Editorial landing page · Arc + Circle Agent Stack · Ocean + Sand palette</p>
+      </div>
+
+      {/* FIDELITY FRAME */}
+      <div style={{
+        width: "min(100%, 820px)", margin: "0 auto", overflow: "hidden",
+        border: `1px solid ${C.borderS}`,
+        background: C.sand,
+        backgroundImage: "radial-gradient(rgba(11,26,51,0.08) 0.7px, transparent 0.7px)",
+        backgroundSize: "16px 16px",
+        color: C.ink,
+        boxShadow: "0 32px 80px rgba(11,26,51,0.25)",
       }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 34, height: 34, background: C.ocean, borderRadius: 8,
-              display: "grid", placeItems: "center", color: C.bg, fontWeight: 900, fontSize: 13,
-            }}>AG</div>
-            <div>
-              <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.02em" }}>ArcGent</span>
-              <span style={{ fontSize: 11, color: C.steel, marginLeft: 8, display: "inline" }}>Signal-to-Payment Agent</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "5px 12px",
-              borderRadius: 999, background: "rgba(90,205,167,0.1)",
-              border: `1px solid rgba(90,205,167,0.25)`,
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.mint, animation: "pulse 2s infinite" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: C.mint }}>RUNNING</span>
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>865M USDC</span>
-          </div>
-        </div>
-      </header>
-
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 24px 48px" }}>
-        {/* TABS */}
-        <div style={{ display: "flex", gap: 4, borderBottom: `1px solid ${C.border}`, paddingBottom: 0, marginBottom: 24 }}>
-          {(["overview", "rules", "payments"] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                padding: "8px 16px", fontSize: 13, fontWeight: tab === t ? 600 : 400,
-                color: tab === t ? C.ink : C.steel,
-                background: tab === t ? C.white : "transparent",
-                border: "none", borderBottom: tab === t ? `2px solid ${C.ocean}` : "2px solid transparent",
-                cursor: "pointer", fontFamily: "inherit",
-                borderRadius: tab === t ? "8px 8px 0 0" : "0",
-                marginBottom: -1,
-              }}
-            >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* OVERVIEW TAB */}
-        {tab === "overview" && (
-          <div>
-            {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
-              {[
-                { label: "Active Rules", value: "4", icon: Bot },
-                { label: "Wallet Balance", value: "865M USDC", icon: CreditCard, accent: C.mint },
-                { label: "Last Signal Check", value: "2 min ago", icon: Radio },
-                { label: "Network", value: "Arc Testnet", sub: "Chain ID: 5042002", icon: Zap },
-              ].map((s, i) => (
-                <div key={i} style={{
-                  background: C.white, borderRadius: 14, padding: "20px 20px 16px",
-                  border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <s.icon size={14} color={s.accent || C.steel} />
-                    <span style={{ fontSize: 11, fontWeight: 500, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</span>
-                  </div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: s.accent || C.ink, letterSpacing: "-0.02em" }}>{s.value}</div>
-                  {s.sub && <div style={{ fontSize: 11, color: C.steel, marginTop: 2 }}>{s.sub}</div>}
-                </div>
-              ))}
-            </div>
-
-            {/* Flow */}
-            <div style={{
-              background: C.white, borderRadius: 14, padding: 24,
-              border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)", marginBottom: 24,
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 20, letterSpacing: "-0.01em" }}>Signal → Payment Flow</h3>
-              <div style={{ display: "flex", alignItems: "stretch", gap: 8, flexWrap: "wrap" }}>
-                {FLOW.map((step, i) => (
-                  <div key={i} style={{ flex: 1, minWidth: 140, display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{
-                      flex: 1, background: step.bg, borderRadius: 10, padding: "16px 12px",
-                      textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                    }}>
-                      <step.icon size={22} color={step.color} strokeWidth={1.5} />
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{step.title}</div>
-                        <div style={{ fontSize: 10, color: C.steel, marginTop: 2 }}>{step.desc}</div>
-                      </div>
-                    </div>
-                    {i < FLOW.length - 1 && (
-                      <div style={{ color: C.steel, opacity: 0.3, fontSize: 20, flexShrink: 0 }}>→</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <button onClick={() => setShowNew(true)} style={{
-                background: C.ocean, color: C.bg, borderRadius: 14, padding: "20px 22px",
-                textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit",
-                display: "flex", alignItems: "center", gap: 14,
-              }}>
-                <div style={{
-                  width: 40, height: 40, background: "rgba(244,240,230,0.15)", borderRadius: 10,
-                  display: "grid", placeItems: "center", flexShrink: 0,
-                }}>
-                  <Plus size={20} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>New Rule</div>
-                  <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>Create a signal-to-payment rule</div>
-                </div>
-              </button>
-              <button style={{
-                background: C.foam, color: C.ocean, borderRadius: 14, padding: "20px 22px",
-                textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit",
-                display: "flex", alignItems: "center", gap: 14,
-              }}>
-                <div style={{
-                  width: 40, height: 40, background: "rgba(27,49,88,0.1)", borderRadius: 10,
-                  display: "grid", placeItems: "center", flexShrink: 0,
-                }}>
-                  <CreditCard size={20} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Fund Wallet</div>
-                  <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>Add USDC via faucet</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* RULES TAB */}
-        {tab === "rules" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Rules <span style={{ fontWeight: 400, fontSize: 14, color: C.steel }}>({rules.length})</span></h2>
-              <button onClick={() => setShowNew(true)} style={{
-                background: C.ocean, color: C.bg, padding: "8px 16px", borderRadius: 8,
-                fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit",
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
-                <Plus size={14} /> New Rule
-              </button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {rules.map(rule => {
-                const sc = SOURCE_COLORS[rule.source] || { bg: "#ddd", text: "#333" };
-                return (
-                  <div key={rule.id} style={{
-                    background: C.white, borderRadius: 14, padding: "18px 20px",
-                    border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <span style={{ fontWeight: 700, fontSize: 14 }}>{rule.name}</span>
-                          <span style={{
-                            fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 999,
-                            background: sc.bg, color: sc.text,
-                          }}>{rule.source}</span>
-                          <span style={{
-                            fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 999,
-                            border: `1px solid rgba(90,205,167,0.3)`, color: C.mint,
-                          }}>{rule.type}</span>
-                        </div>
-                        <p style={{ fontSize: 12, color: C.steel, margin: "0 0 8px" }}>{rule.desc}</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, color: C.steel }}>
-                          <span>Trigger: <code style={{ background: "#f3f4f6", padding: "1px 5px", borderRadius: 4, fontSize: 10 }}>{rule.trigger}</code></span>
-                          <span style={{ fontWeight: 600, color: C.ink }}>{rule.amount} USDC</span>
-                          <span>Cooldown: {rule.cooldown}s</span>
-                        </div>
-                      </div>
-                      <button onClick={() => toggle(rule.id)} style={{
-                        width: 44, height: 24, borderRadius: 999, border: "none", cursor: "pointer", flexShrink: 0,
-                        background: rule.enabled ? C.mint : "#e5e7eb", position: "relative", transition: "background 0.2s",
-                      }}>
-                        <span style={{
-                          position: "absolute", top: 2, left: rule.enabled ? 24 : 2,
-                          width: 20, height: 20, borderRadius: "50%", background: C.white,
-                          transition: "left 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
-                        }} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* PAYMENTS TAB */}
-        {tab === "payments" && (
-          <div style={{
-            background: C.white, borderRadius: 14, padding: "64px 24px", textAlign: "center",
-            border: `1px solid ${C.borderLight}`, boxShadow: "0 1px 3px rgba(11,26,51,0.04)",
-          }}>
-            <CreditCard size={48} color={C.steel} strokeWidth={1} style={{ opacity: 0.3, marginBottom: 16 }} />
-            <h3 style={{ fontWeight: 700, fontSize: 16, color: C.steel, margin: "0 0 4px" }}>No payments yet</h3>
-            <p style={{ fontSize: 13, color: C.steel, margin: 0 }}>Payments will appear here once rules trigger</p>
-          </div>
-        )}
-      </main>
-
-      {/* MODAL */}
-      {showNew && (
-        <div onClick={() => setShowNew(false)} style={{
-          position: "fixed", inset: 0, background: "rgba(11,26,51,0.5)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16,
+        {/* NAV */}
+        <header style={{
+          display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center",
+          gap: 30, minHeight: 60, padding: "0 25px",
+          borderBottom: `1px solid ${C.border}`,
         }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: C.white, borderRadius: 20, padding: 28, width: "100%", maxWidth: 420,
-            boxShadow: "0 25px 50px rgba(11,26,51,0.2)",
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 900, letterSpacing: "-0.05em" }}>
+            <span style={{ display: "grid", placeItems: "center", width: 33, height: 33, color: "white", background: C.ocean, fontSize: 11, borderRadius: 4, letterSpacing: "-0.08em" }}>AG</span>
+            ArcGent
+          </div>
+          <nav style={{ display: "flex", gap: 28, fontSize: 8, fontWeight: 700, color: C.steel }}>
+            {["How It Works", "Use Cases", "Docs", "Pricing", "Blog"].map(l => (
+              <span key={l} style={{ cursor: "pointer" }}>{l}</span>
+            ))}
+          </nav>
+          <a href="#" style={{ padding: "11px 15px", color: "white", background: C.coral, fontSize: 8, fontWeight: 900, textTransform: "uppercase", textDecoration: "none", borderRadius: 3 }}>
+            Launch Agent ↗
+          </a>
+        </header>
+
+        {/* HERO */}
+        <section style={{ position: "relative", minHeight: 515, padding: "11px 25px 0", overflow: "hidden" }}>
+          <h1 style={{
+            position: "relative", zIndex: 3, width: 620, margin: 0,
+            fontSize: 83, fontWeight: 900, letterSpacing: "-0.073em", lineHeight: 0.83,
+          }}>When signals fire, payments flow.</h1>
+          <div style={{
+            position: "absolute", left: 27, bottom: 31, zIndex: 4, width: 220,
+            fontSize: 11, lineHeight: 1.25,
           }}>
-            <h3 style={{ fontWeight: 700, fontSize: 18, margin: "0 0 20px" }}>Create New Rule</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>Rule Name</label>
-                <input placeholder="e.g. Auto Bug Bounty" style={{
-                  width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
-                  fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none",
-                }} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>Signal Source</label>
-                <select style={{
-                  width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
-                  fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none", background: C.white,
-                }}>
-                  <option>GitHub</option><option>External API</option><option>Onchain Oracle</option><option>Webhook</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>Trigger Condition</label>
-                <input placeholder="e.g. pull_request.merged" style={{
-                  width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
-                  fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none",
-                }} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>Amount (USDC)</label>
-                  <input type="number" placeholder="50" style={{
-                    width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
-                    fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none",
-                  }} />
+            Autonomous agent yang menghubungkan real-world signals ke USDC payments via Arc &amp; Circle.
+            <span style={{ display: "block", marginTop: 13 }}>
+              <a href="#" style={{ color: C.ocean, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>
+                Start Building ↗
+              </a>
+            </span>
+          </div>
+          <svg style={{
+            position: "absolute", inset: "107px -15px -18px 175px", zIndex: 2,
+            width: "calc(100% - 150px)", height: 425,
+          }} viewBox="0 0 650 430" fill="none" aria-hidden="true">
+            <path d="M20 432C52 341 123 303 236 259C330 223 358 185 373 116C381 79 404 59 444 59H550" stroke={C.ocean} strokeWidth="14" strokeLinecap="round"/>
+            <path d="M45 435C75 352 139 319 250 277C350 239 381 196 391 137C397 100 420 81 461 81H560" stroke={C.mint} strokeWidth="14" strokeLinecap="round"/>
+            <path d="M72 438C101 365 155 337 269 295C368 258 400 216 409 158C415 123 438 104 477 104H570" stroke={C.gold} strokeWidth="14" strokeLinecap="round"/>
+            <path d="M99 441C126 379 175 354 286 313C386 276 421 236 428 180C433 146 455 128 493 128H580" stroke={C.coral} strokeWidth="14" strokeLinecap="round"/>
+            <path d="M126 444C151 394 194 372 304 332C405 295 440 257 446 202C450 169 472 153 509 153H590" stroke={C.purple} strokeWidth="14" strokeLinecap="round"/>
+            <g fill={C.ocean}><circle cx="565" cy="59" r="6"/><circle cx="584" cy="59" r="7"/><circle cx="605" cy="59" r="8"/><circle cx="629" cy="59" r="10"/></g>
+            <g fill={C.mint}><circle cx="575" cy="81" r="5"/><circle cx="593" cy="81" r="6"/><circle cx="613" cy="81" r="7"/><circle cx="635" cy="81" r="9"/></g>
+            <g fill={C.gold}><circle cx="584" cy="104" r="5"/><circle cx="601" cy="104" r="6"/><circle cx="620" cy="104" r="7"/><circle cx="641" cy="104" r="8"/></g>
+          </svg>
+        </section>
+
+        {/* MANIFESTO */}
+        <section style={{
+          position: "relative", minHeight: 276, padding: "22px 25px", overflow: "hidden",
+          background: C.foam, borderTop: `1px solid ${C.borderL}`, borderBottom: `1px solid ${C.borderL}`,
+        }}>
+          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Our Thesis</div>
+          <h2 style={{
+            width: 400, margin: "13px 0 24px", fontSize: 49, lineHeight: 0.86, letterSpacing: "-0.055em",
+          }}>Agents don't need permission to <em style={{ fontFamily: "Georgia, serif", fontWeight: 400, fontStyle: "italic" }}>transact.</em></h2>
+          <p style={{ width: 220, margin: 0, fontSize: 10, lineHeight: 1.32, color: C.ocean }}>
+            ArcGent listens to onchain &amp; offchain signals — merges, bug fixes, API pings — then autonomously routes USDC payments through Circle wallets. No humans in the loop.
+          </p>
+          <span style={{ display: "block", marginTop: 17 }}>
+            <a href="#" style={{ color: C.steel, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>
+              Read the protocol ↗
+            </a>
+          </span>
+          <div style={{ position: "absolute", inset: "0 0 0 290px", pointerEvents: "none" }}>
+            <svg style={{ position: "absolute", inset: "8px 30px 0 0", width: "100%", height: "100%" }} viewBox="0 0 500 270" fill="none">
+              <path d="M4 240C85 183 57 130 142 136C218 141 170 54 253 53C347 51 338 201 484 184" stroke={C.ocean} strokeWidth="1.5" strokeDasharray="5 5" opacity="0.65"/>
+            </svg>
+            {[
+              { t: 40, r: 80, s: 18, c: C.ocean, a: "2s" },
+              { t: 90, l: 120, s: 12, c: C.coral, a: "2.5s .5s" },
+              { r: 140, b: 70, s: 14, c: C.mint, a: "3s 1s" },
+              { l: 180, b: 50, s: 10, c: C.gold, a: "2.8s .7s" },
+              { t: 60, r: 200, s: 8, c: C.purple, a: "2.2s 1.4s" },
+            ].map((d, i) => (
+              <span key={i} style={{
+                position: "absolute", borderRadius: "50%",
+                top: d.t, right: d.r, left: d.l, bottom: d.b,
+                width: d.s, height: d.s, background: d.c,
+                animation: `pulse ${d.a} infinite`,
+              }} />
+            ))}
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section style={{ padding: "20px 25px 6px", background: "color-mix(in srgb, #f4f0e6 96%, white)" }}>
+          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>How ArcGent works</div>
+          {[
+            { n: "01", c: C.ocean, title: "Listen", desc: "Agent monitors verified signal sources — GitHub events, onchain oracles, flight data, Strava APIs, weather feeds — any structured event stream.", link: "Explore signals" },
+            { n: "02", c: C.coral, title: "Decide", desc: "LLM-powered decision engine evaluates trigger conditions against user-defined rules. \"If PR merged + label 'bugfix' → pay 50 USDC.\"", link: "Explore rules" },
+            { n: "03", c: C.mint, title: "Pay", desc: "Circle Agent Stack executes the payment — wallet debit, USDC transfer, settlement confirmed onchain. Nanopayments for sub-cent amounts.", link: "Explore payments" },
+          ].map((r, i) => (
+            <div key={i} style={{
+              display: "grid", gridTemplateColumns: "42px 1.15fr 0.72fr 0.62fr", gap: 12,
+              alignItems: "center", minHeight: 91, borderBottom: `1px solid ${C.borderS}`,
+              paddingBottom: i < 2 ? 0 : 6,
+            }}>
+              <span style={{ fontSize: 18, fontWeight: 900, color: r.c }}>{r.n}</span>
+              <h3 style={{ margin: 0, fontSize: 54, letterSpacing: "-0.06em", lineHeight: 0.88 }}>{r.title}</h3>
+              <div style={{
+                height: 58, opacity: 0.92, backgroundPosition: "center",
+                backgroundImage: `radial-gradient(circle, ${r.c} 2.1px, transparent 2.4px)`,
+                backgroundSize: "13px 13px",
+                maskImage: i === 0 ? "linear-gradient(90deg, transparent, black 22%, black 72%, transparent)" :
+                           i === 1 ? "radial-gradient(ellipse at 35% 50%, black 8%, transparent 70%)" :
+                           "linear-gradient(110deg, transparent 3%, black 35%, transparent 91%)",
+              }} />
+              <p style={{ margin: 0, fontSize: 9, lineHeight: 1.34, color: C.ocean }}>
+                {r.desc}
+                <span style={{ display: "block", marginTop: 8 }}>
+                  <a href="#" style={{ color: r.c, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>{r.link} ↗</a>
+                </span>
+              </p>
+            </div>
+          ))}
+        </section>
+
+        {/* USE CASES */}
+        <section style={{ padding: "15px 25px 22px" }}>
+          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Use Cases</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 11, marginTop: 8 }}>
+            {[
+              { title: "Bug Bounty", desc: "Auto-pay developers when their PR with \"fix:\" label gets merged. No manual approval.", bg: C.sand, color: C.ocean, art: "wave" },
+              { title: "Refund AI", desc: "Flight delayed > 2 hours? API ping triggers instant USDC refund to traveler's wallet.", bg: C.coral, color: "white", art: "node" },
+              { title: "Tip Stream", desc: "Content hits 1000 reads? Writer gets tipped automatically via Circle Nanopayments.", bg: C.sand, color: C.mint, art: "ripple" },
+              { title: "Accountability", desc: "Missed gym all week? Your Strava data triggers a penalty payment to your accountability partner.", bg: C.purple, color: "white", art: "arc" },
+            ].map((c, i) => (
+              <article key={i} style={{
+                position: "relative", minHeight: 231, padding: 12, overflow: "hidden",
+                border: `1px solid ${C.borderL}`, background: c.bg === C.sand ? "rgba(244,240,230,0.86)" : c.bg, color: c.color,
+              }}>
+                <h4 style={{ position: "relative", zIndex: 2, margin: 0, fontSize: 24, letterSpacing: "-0.045em" }}>{c.title}</h4>
+                <p style={{ position: "relative", zIndex: 2, width: 130, marginTop: 4, fontSize: 8, lineHeight: 1.3 }}>{c.desc}</p>
+                {c.art === "wave" && (
+                  <div style={{ position: "absolute", left: -15, right: -15, bottom: 35, height: 92, backgroundImage: `radial-gradient(circle, ${C.ocean} 1.55px, transparent 1.8px)`, backgroundSize: "7px 7px", clipPath: "polygon(0 58%, 14% 36%, 29% 18%, 46% 28%, 61% 62%, 75% 45%, 89% 58%, 100% 38%, 100% 100%, 0 100%)" }} />
+                )}
+                {c.art === "node" && (
+                  <div style={{ position: "absolute", left: 24, bottom: 25, width: 128, height: 128, border: `27px solid ${C.sand}`, borderRadius: "50%" }}>
+                    <div style={{ position: "absolute", left: 32, top: 32, width: 22, height: 22, borderRadius: "50%", background: C.ink }} />
+                  </div>
+                )}
+                {c.art === "ripple" && (
+                  <div style={{ position: "absolute", right: -12, bottom: 25, width: 150, height: 125, border: `8px double ${C.mint}`, borderRadius: "49% 51% 46% 54%", transform: "rotate(-8deg)", opacity: 0.9, boxShadow: `inset 0 0 0 8px ${C.sand}, inset 0 0 0 14px ${C.mint}, inset 0 0 0 21px ${C.sand}, inset 0 0 0 27px ${C.mint}` }} />
+                )}
+                {c.art === "arc" && (
+                  <div style={{ position: "absolute", right: -20, bottom: -55, width: 165, height: 165, border: `31px solid ${C.ink}`, borderRadius: "50%" }}>
+                    <div style={{ position: "absolute", inset: 23, border: `14px solid ${C.sand}`, borderRadius: "50%" }} />
+                  </div>
+                )}
+                <div style={{ position: "absolute", left: 12, bottom: 10, zIndex: 3 }}>
+                  <a href="#" style={{ color: c.color, borderBottom: "1px solid currentColor", fontSize: 7, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>View case ↗</a>
                 </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 500, color: C.steel, display: "block", marginBottom: 4 }}>Recipient</label>
-                  <input placeholder="0x..." style={{
-                    width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8,
-                    fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none",
-                  }} />
+              </article>
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <a href="#" style={{ color: C.ink, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>All use cases ↗</a>
+          </div>
+        </section>
+
+        {/* PROCESS */}
+        <section style={{ padding: "0 25px 20px" }}>
+          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>Agent Lifecycle</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+            {[
+              { t: "Connect", d: "Wire your signal source via API, webhook, or oracle feed.", c: C.ocean },
+              { t: "Configure", d: "Define rules: IF {condition} THEN pay {amount} USDC to {wallet}.", c: C.coral },
+              { t: "Verify", d: "Agent validates signal authenticity before triggering payment.", c: C.mint },
+              { t: "Settle", d: "USDC transfer executed onchain. Receipt logged. Balance updated.", c: C.purple },
+            ].map((s, i) => (
+              <div key={i} style={{ position: "relative", minHeight: 95, padding: "16px 18px 10px", borderTop: `3px solid ${s.c}` }}>
+                <div style={{ position: "absolute", top: -7, left: 0, width: 10, height: 10, border: `2px solid ${C.sand}`, borderRadius: "50%", background: s.c }} />
+                <strong style={{ display: "block", marginBottom: 4, fontSize: 13 }}>{s.t}</strong>
+                <span style={{ display: "block", width: 130, fontSize: 8, lineHeight: 1.3, color: C.steel }}>{s.d}</span>
+                <div style={{ marginTop: 10 }}>
+                  <a href="#" style={{ color: s.c, borderBottom: "1px solid currentColor", fontSize: 6, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Learn ↗</a>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 10, paddingTop: 6 }}>
-                <button type="button" onClick={() => setShowNew(false)} style={{
-                  flex: 1, padding: "10px 16px", border: `1px solid ${C.border}`, borderRadius: 8,
-                  fontSize: 13, fontWeight: 500, background: C.white, cursor: "pointer", fontFamily: "inherit",
-                }}>Cancel</button>
-                <button type="submit" style={{
-                  flex: 1, padding: "10px 16px", background: C.ocean, color: C.bg, borderRadius: 8,
-                  fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit",
-                }}>Create Rule</button>
-              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section style={{
+          display: "grid", gridTemplateColumns: "1.05fr 0.95fr", minHeight: 260,
+          overflow: "hidden", background: C.ocean, color: "white",
+          borderBlock: `1px solid ${C.borderS}`,
+        }}>
+          <div style={{ padding: "28px 27px" }}>
+            <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Agent-First Economy</div>
+            <h2 style={{ width: 420, margin: "16px 0 18px", fontSize: 47, lineHeight: 0.85, letterSpacing: "-0.06em" }}>Your agent holds the wallet. Your rules move the money.</h2>
+            <p style={{ width: 260, fontSize: 9, lineHeight: 1.34, opacity: 0.85 }}>ArcGent runs on Circle Agent Stack. Every agent gets its own wallet. Every rule is auditable. Every payment is instant.</p>
+            <div style={{ marginTop: 16 }}>
+              <a href="#" style={{ color: C.surf, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Deploy your first agent ↗</a>
             </div>
           </div>
-        </div>
-      )}
+          <div style={{ position: "relative", minHeight: 260 }}>
+            {[{ s: 340, c: C.sand }, { s: 278, c: C.surf }, { s: 216, c: C.mint }, { s: 154, c: C.purple }, { s: 92, c: C.gold }].map((r, i) => (
+              <i key={i} style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: r.s, height: r.s, borderRadius: "50%",
+                border: `17px solid ${r.c}`,
+                background: i === 4 ? C.sand : "transparent",
+                transform: "translate(-50%,-50%)",
+              }} />
+            ))}
+            <span style={{
+              position: "absolute", zIndex: 4, left: "50%", top: "50%",
+              width: 94, transform: "translate(-50%,-50%) rotate(-3deg)",
+              textAlign: "center", fontFamily: "monospace", fontSize: 8, fontWeight: 700, color: C.ink,
+            }}>
+              SIGNAL IN.<br/>USDC OUT.
+            </span>
+          </div>
+        </section>
+
+        {/* NOTES */}
+        <section style={{ padding: "18px 25px 22px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Agent Log</div>
+            <a href="#" style={{ color: C.ink, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>View all ↗</a>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 11, marginTop: 10 }}>
+            {[
+              { tag: "Protocol", title: "How SignalPay agents verify offchain events", art: "ocean", link: "Read" },
+              { tag: "Engineering", title: "Building agent wallets on Circle Agent Stack", art: "stripes", link: "Read" },
+              { tag: "Use Case", title: "The rise of nanopayments in agent economies", art: "mint", link: "Read" },
+              { tag: "Research", title: "Agent-to-agent negotiation: a new primitive", art: "purple", link: "Read" },
+            ].map((n, i) => (
+              <article key={i} style={{ minHeight: 167, padding: 8, border: `1px solid ${C.border}`, background: "rgba(244,240,230,0.72)" }}>
+                <div style={{
+                  height: 72, marginBottom: 8,
+                  backgroundImage: n.art === "ocean" ? `radial-gradient(circle, ${C.ocean} 1.6px, transparent 1.9px)` :
+                                   n.art === "mint" ? `radial-gradient(circle, ${C.mint} 1.6px, transparent 1.9px)` :
+                                   n.art === "purple" ? `radial-gradient(circle, ${C.purple} 1.6px, transparent 1.9px)` : "none",
+                  backgroundSize: "8px 8px",
+                  background: n.art === "stripes" ? `repeating-linear-gradient(135deg, ${C.mint} 0 8px, ${C.sand} 8px 13px, ${C.gold} 13px 21px, ${C.sand} 21px 26px, ${C.coral} 26px 34px, ${C.sand} 34px 39px, ${C.ocean} 39px 47px, ${C.sand} 47px 52px)` : undefined,
+                  maskImage: n.art === "ocean" ? "radial-gradient(ellipse, black 8%, transparent 72%)" :
+                             n.art === "mint" ? "linear-gradient(90deg, transparent, black 35%, black 65%, transparent)" :
+                             n.art === "purple" ? "radial-gradient(ellipse at 50% 105%, black 10%, transparent 68%)" : undefined,
+                }} />
+                <time style={{ fontSize: 6, textTransform: "uppercase", color: C.steel }}>{n.tag}</time>
+                <h4 style={{ margin: "5px 0 12px", fontSize: 10, lineHeight: 1.2 }}>{n.title}</h4>
+                <a href="#" style={{ color: n.art === "stripes" ? C.coral : n.art === "ocean" ? C.ocean : n.art === "mint" ? C.mint : C.purple, borderBottom: "1px solid currentColor", fontSize: 6, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>{n.link} ↗</a>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* CLOSING */}
+        <section style={{
+          display: "grid", gridTemplateColumns: "1.1fr 0.62fr 110px", gap: 30,
+          alignItems: "center", minHeight: 190, padding: "26px 25px",
+          borderTop: `1px solid ${C.borderL}`,
+        }}>
+          <h2 style={{ margin: 0, fontSize: 53, lineHeight: 0.85, letterSpacing: "-0.06em" }}>What signal will <em style={{ fontFamily: "Georgia, serif", fontWeight: 400 }}>your agent</em> listen for?</h2>
+          <div>
+            <p style={{ fontSize: 10, lineHeight: 1.4, color: C.steel }}>From bug bounties to flight refunds — if it can be verified, it can be paid.</p>
+            <div style={{ marginTop: 14 }}>
+              <a href="#" style={{ color: C.ocean, borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900, letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none" }}>Launch agent ↗</a>
+            </div>
+          </div>
+          <div style={{
+            display: "grid", placeItems: "center", width: 96, height: 96,
+            color: "white", background: C.ocean, fontSize: 30, fontWeight: 900, borderRadius: 8,
+          }}>AG</div>
+        </section>
+
+        {/* FOOTER */}
+        <footer style={{
+          display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 1.1fr", gap: 20,
+          alignItems: "start", padding: "17px 25px 21px",
+          borderTop: `1px solid ${C.borderL}`, fontSize: 7, lineHeight: 1.55, color: C.steel,
+        }}>
+          <strong style={{ fontSize: 13, letterSpacing: "-0.04em", color: C.ink }}>ArcGent</strong>
+          <span>Signal-to-payment<br/>autonomous agents.</span>
+          <span>LISTEN<br/>DECIDE<br/>PAY</span>
+          <span>DOCS<br/>GITHUB<br/>DISCORD</span>
+          <span>Built on Arc &amp; Circle<br/>Agent Stack<br/>© 2026</span>
+        </footer>
+      </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: .8; } 50% { transform: scale(2.5); opacity: .15; } }
         ::selection { background: rgba(172,198,233,0.4); }
       `}} />
     </div>
