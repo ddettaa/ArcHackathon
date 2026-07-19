@@ -66,7 +66,7 @@ export default function Landing() {
           When signals fire,<br/>payments flow.
         </h1>
         <div style={{ position:"relative", zIndex:3, maxWidth:320, fontSize:13, lineHeight:1.3, marginTop:24, color:C.ink }}>
-          Autonomous agent yang menghubungkan real-world signals ke USDC payments via Arc &amp; Circle.
+          Autonomous agents that connect real-world signals to USDC payments via Arc &amp; Circle Agent Stack.
           <div style={{ marginTop:14 }}><Link href="/dashboard" style={FL(C.ocean)}>Start Building ↗</Link></div>
         </div>
         <svg style={{ position:"absolute", right:px, bottom:40, zIndex:2, width:"45%", maxWidth:600, minWidth:300 }} viewBox="0 0 650 430" fill="none" aria-hidden="true">
