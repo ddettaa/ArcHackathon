@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { NotificationToasts } from "@/components/Notifications";
 import { 
   Bot, Radio, Brain, Zap, CheckCircle, CreditCard, 
   Plus, RefreshCw, ExternalLink, Shield, ShieldAlert,
@@ -56,6 +57,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [rulesPage, setRulesPage] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
   useEffect(() => { setMounted(true); }, []);
 
   const fetchData = useCallback(async () => {
@@ -385,8 +389,9 @@ export default function Dashboard() {
           ) : rules.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: C.steel, fontSize: 13 }}>No rules configured yet. Create one to start automating payments.</div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {rules.map(r => (
+            <div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {rules.slice((rulesPage - 1) * ITEMS_PER_PAGE, rulesPage * ITEMS_PER_PAGE).map(r => (
                 <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", background: "rgba(11,26,51,0.02)", borderRadius: 8, border: "1px solid rgba(11,26,51,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: (sourceBadge[r.signal.source] || sourceBadge.github).bg, color: (sourceBadge[r.signal.source] || sourceBadge.github).text, textTransform: "uppercase" }}>
@@ -409,6 +414,16 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+              </div>
+              {rules.length > ITEMS_PER_PAGE && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(11,26,51,0.06)" }}>
+                  <div style={{ fontSize: 10, color: C.steel }}>Page {rulesPage} of {Math.ceil(rules.length / ITEMS_PER_PAGE)} · {rules.length} rules</div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => setRulesPage(p => Math.max(1, p - 1))} disabled={rulesPage === 1} style={{ padding: "4px 10px", borderRadius: 4, fontSize: 9, fontWeight: 700, border: "1px solid rgba(11,26,51,0.1)", background: "white", color: rulesPage === 1 ? C.steel : C.ink, cursor: rulesPage === 1 ? "default" : "pointer", opacity: rulesPage === 1 ? 0.5 : 1 }}>← Prev</button>
+                    <button onClick={() => setRulesPage(p => Math.min(Math.ceil(rules.length / ITEMS_PER_PAGE), p + 1))} disabled={rulesPage >= Math.ceil(rules.length / ITEMS_PER_PAGE)} style={{ padding: "4px 10px", borderRadius: 4, fontSize: 9, fontWeight: 700, border: "1px solid rgba(11,26,51,0.1)", background: "white", color: C.ink, cursor: "pointer" }}>Next →</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -419,8 +434,9 @@ export default function Dashboard() {
           {payments.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: C.steel, fontSize: 13 }}>No payments yet. Trigger a rule to see transactions here.</div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {payments.slice().reverse().map(p => {
+            <div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {payments.slice().reverse().slice((paymentsPage - 1) * ITEMS_PER_PAGE, paymentsPage * ITEMS_PER_PAGE).map(p => {
                 const statusColors: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
                   confirmed: { bg: "rgba(90,205,167,0.1)", text: C.mint, icon: <CheckCircle size={14} color={C.mint} /> },
                   pending: { bg: "rgba(242,164,58,0.1)", text: C.gold, icon: <Clock size={14} color={C.gold} /> },
@@ -449,6 +465,16 @@ export default function Dashboard() {
                   </div>
                 );
               })}
+              </div>
+              {payments.length > ITEMS_PER_PAGE && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(11,26,51,0.06)" }}>
+                  <div style={{ fontSize: 10, color: C.steel }}>Page {paymentsPage} of {Math.ceil(payments.length / ITEMS_PER_PAGE)} · {payments.length} payments</div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => setPaymentsPage(p => Math.max(1, p - 1))} disabled={paymentsPage === 1} style={{ padding: "4px 10px", borderRadius: 4, fontSize: 9, fontWeight: 700, border: "1px solid rgba(11,26,51,0.1)", background: "white", color: paymentsPage === 1 ? C.steel : C.ink, cursor: paymentsPage === 1 ? "default" : "pointer", opacity: paymentsPage === 1 ? 0.5 : 1 }}>← Prev</button>
+                    <button onClick={() => setPaymentsPage(p => Math.min(Math.ceil(payments.length / ITEMS_PER_PAGE), p + 1))} disabled={paymentsPage >= Math.ceil(payments.length / ITEMS_PER_PAGE)} style={{ padding: "4px 10px", borderRadius: 4, fontSize: 9, fontWeight: 700, border: "1px solid rgba(11,26,51,0.1)", background: "white", color: C.ink, cursor: "pointer" }}>Next →</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -505,6 +531,7 @@ export default function Dashboard() {
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}@keyframes spin{to{transform:rotate(360deg)}}` }} />
+      <NotificationToasts />
     </div>
   );
 }
@@ -544,7 +571,7 @@ function AIEvaluationPanel() {
   };
 
   return (
-    <div style={{ background: "white", borderRadius: 12, border: `1px solid rgba(159,114,255,0.3)`, padding: 24, marginBottom: 24 }}>
+    <div style={{ background: "white", borderRadius: 12, border: "1px solid rgba(159,114,255,0.3)", padding: 24, marginBottom: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <Cpu size={18} color={C.purple} />
         <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>🧠 AI Evaluation</div>

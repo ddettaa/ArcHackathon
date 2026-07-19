@@ -292,6 +292,7 @@ app.post("/api/nanopayments/send", async (c) => {
   try {
     const agent = getAgent();
     const txHash = await agent.circleWallet.sendNanopayment(to, microAmount, memo);
+    broadcast("payment", { type: "nanopayment", txHash, to, amount: microAmount, memo });
     return c.json({ 
       success: true, 
       txHash, 
@@ -409,6 +410,17 @@ app.get("/api/ai/stats", (c) => {
   const evaluator = getEvaluator();
   return c.json(evaluator.getStats());
 });
+
+// --- WEBSOCKET ---
+// Broadcast events to connected dashboard clients
+const wsClients = new Set<any>();
+
+export function broadcast(event: string, data: any) {
+  const msg = JSON.stringify({ event, data, ts: Date.now() });
+  for (const ws of wsClients) {
+    try { ws.send(msg); } catch { wsClients.delete(ws); }
+  }
+}
 
 // --- START SERVER ---
 const PORT = 3001;
@@ -545,8 +557,35 @@ async function main() {
 
   const agent = getAgent();
   await agent.start();
-  Bun.serve({ port: PORT, fetch: app.fetch });
-  console.log(`🤖 ArcGent API running on port ${PORT}`);
+
+  Bun.serve({
+    port: PORT,
+    fetch(req, server) {
+      // WebSocket upgrade for real-time notifications
+      if (req.headers.get("upgrade") === "websocket") {
+        const success = server.upgrade(req);
+        if (success) return undefined;
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      }
+      return app.fetch(req, server);
+    },
+    websocket: {
+      open(ws) {
+        wsClients.add(ws);
+        console.log(`[WS] Client connected (${wsClients.size} total)`);
+        ws.send(JSON.stringify({ event: "connected", data: { status: "ok" }, ts: Date.now() }));
+      },
+      message(ws, msg) {
+        // Handle ping/pong
+        if (msg === "ping") ws.send("pong");
+      },
+      close(ws) {
+        wsClients.delete(ws);
+        console.log(`[WS] Client disconnected (${wsClients.size} remaining)`);
+      },
+    },
+  });
+  console.log(`🤖 ArcGent API running on port ${PORT} (HTTP + WebSocket)`);
 }
 
 main().catch(console.error);
