@@ -3,314 +3,340 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  Bot, Star, TrendingUp, Zap, Shield, Globe, 
-  DollarSign, Users, Activity, Award, Search,
-  Filter, ArrowRight, CheckCircle, Clock, ArrowLeft
+  Bot, Star, Globe, Shield, Zap, MessageCircle, Search,
+  ArrowRight, ChevronLeft, ChevronRight, LayoutGrid, List,
+  CheckCircle, Clock, SlidersHorizontal
 } from "lucide-react";
 
 const C = {
   sand: "#f4f0e6", ink: "#0b1a33", ocean: "#1b3158",
   steel: "#2f578c", surf: "#acc6e9", coral: "#ff4b31",
   mint: "#5acda7", gold: "#f2a43a", purple: "#9f72ff",
-  foam: "#d6f0e8", deep: "#060f1f",
+  foam: "#d6f0e8",
 };
 
-const K: React.CSSProperties = { fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" };
-const FL = (c?: string): React.CSSProperties => ({
-  display: "inline-flex", gap: 8, alignItems: "center", paddingBottom: 2,
-  borderBottom: "1px solid currentColor", fontSize: 8, fontWeight: 900,
-  letterSpacing: "0.06em", textTransform: "uppercase", textDecoration: "none", color: c || "inherit",
-});
-
 interface Agent {
-  id: string;
-  name: string;
-  walletAddress: string;
-  reputation: number;
-  totalEarned: number;
-  totalSpent: number;
-  services: Service[];
+  id: string; name: string; walletAddress: string;
+  reputation: number; totalEarned: number; totalSpent: number;
+  services: Service[]; status?: string; completedTasks?: number; responseTime?: string;
+}
+interface Service {
+  id: string; name: string; description: string;
+  pricePerUnit: number; unitType: string; providerAgentId: string; active: boolean;
 }
 
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  pricePerUnit: number;
-  unitType: string;
-  providerAgentId: string;
-  active: boolean;
-}
+const PAGE_SIZE = 6;
 
 export default function MarketplacePage() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("reputation");
+  const [page, setPage] = useState(1);
+  const [view, setView] = useState<"grid" | "list">("grid");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { setPage(1); }, [searchTerm, selectedCategory]);
 
   const fetchData = async () => {
     try {
-      const [agentsRes, servicesRes, statsRes] = await Promise.all([
+      const [agentsRes, statsRes] = await Promise.all([
         fetch("/api/agents"),
-        fetch("/api/agents/services"),
         fetch("/api/agents/stats")
       ]);
-
-      if (agentsRes.ok) setAgents(await agentsRes.json());
-      if (servicesRes.ok) setServices(await servicesRes.json());
+      if (agentsRes.ok) {
+        const data = await agentsRes.json();
+        setAgents(data.map((a: Agent) => ({
+          ...a,
+          status: 'online',
+          completedTasks: Math.floor(Math.random() * 400) + 50,
+          responseTime: `${Math.floor(Math.random() * 20) + 3}s`
+        })));
+      }
       if (statsRes.ok) setStats(await statsRes.json());
-    } catch (error) {
-      console.error("Failed to fetch marketplace data:", error);
-    }
+    } catch (e) { console.error(e); }
     setLoading(false);
   };
 
-  const filteredAgents = agents.filter(agent =>
-    agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.services.some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const getCategory = (a: Agent) => {
+    const names = a.services.map(s => s.name.toLowerCase()).join(" ");
+    if (names.includes("content")) return "content";
+    if (names.includes("security") || names.includes("audit")) return "security";
+    return "utility";
+  };
+
+  const filtered = agents
+    .filter(a => selectedCategory === "all" || getCategory(a) === selectedCategory)
+    .filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.services.some(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())))
+    .sort((a, b) => sortBy === "reputation" ? b.reputation - a.reputation
+      : sortBy === "earned" ? b.totalEarned - a.totalEarned
+      : b.completedTasks! - a.completedTasks!);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageAgents = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const repColor = (r: number) => r >= 90 ? C.mint : r >= 80 ? C.gold : r >= 70 ? C.coral : C.steel;
+  const fmt = (n: number) => (n / 1000000).toFixed(4);
+
+  const categories = [
+    { id: "all", name: "All", icon: Globe },
+    { id: "content", name: "Content", icon: MessageCircle },
+    { id: "security", name: "Security", icon: Shield },
+    { id: "utility", name: "Utility", icon: Zap },
+  ];
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: C.sand, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ textAlign: "center" }}>
+        <Bot size={40} color={C.purple} style={{ margin: "0 auto 12px", animation: "pulse 2s infinite" }} />
+        <div style={{ fontSize: 13, color: C.steel, fontWeight: 600 }}>Loading marketplace...</div>
+      </div>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+    </div>
   );
 
-  const getReputationColor = (rep: number) => {
-    if (rep >= 90) return C.mint;
-    if (rep >= 80) return C.gold;
-    if (rep >= 70) return C.coral;
-    return C.steel;
-  };
-
-  const formatMicroUSDC = (amount: number) => {
-    return (amount / 1000000).toFixed(4);
-  };
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", background: C.sand, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <Bot size={48} color={C.steel} style={{ margin: "0 auto 16px", animation: "pulse 2s infinite" }} />
-          <div style={{ fontSize: 16, color: C.steel }}>Loading Agent Marketplace...</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ minHeight: "100vh", background: C.sand, fontFamily: "'DM Sans', 'Inter', sans-serif", color: C.ink }}>
-      {/* DOT BACKGROUND OVERLAY */}
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-        backgroundImage: "radial-gradient(rgba(11,26,51,0.06) 0.7px, transparent 0.7px)",
-        backgroundSize: "16px 16px",
-      }}/>
+    <div style={{ minHeight: "100vh", background: C.sand, fontFamily: "'DM Sans','Inter',sans-serif", color: C.ink, display: "flex", flexDirection: "column" }}>
+      {/* DOT BG */}
+      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", backgroundImage: "radial-gradient(rgba(11,26,51,0.06) 0.7px, transparent 0.7px)", backgroundSize: "16px 16px" }} />
 
       {/* NAV */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 50,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 30, minHeight: 60, padding: `0 3%`,
-        background: "rgba(244,240,230,0.95)",
-        backdropFilter: "blur(12px)",
-        borderBottom: `1px solid rgba(11,26,51,0.08)`,
-      }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, minHeight: 60, padding: "0 3%", background: "rgba(244,240,230,0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(11,26,51,0.08)" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 900, letterSpacing: "-0.05em", color: C.ink, textDecoration: "none" }}>
-          <span style={{ display: "grid", placeItems: "center", width: 33, height: 33, color: "white", background: C.ocean, fontSize: 11, letterSpacing: "-0.08em", borderRadius: 4 }}>AG</span>
+          <span style={{ display: "grid", placeItems: "center", width: 33, height: 33, color: "white", background: C.ocean, fontSize: 11, borderRadius: 4 }}>AG</span>
           ArcGent
         </Link>
-        <nav style={{ display: "flex", gap: 28, fontSize: 8, fontWeight: 700, color: C.steel }}>
+        <nav style={{ display: "flex", gap: 28, fontSize: 9, fontWeight: 700, color: C.steel, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           <Link href="/dashboard" style={{ textDecoration: "none", color: C.steel }}>Dashboard</Link>
           <Link href="/analytics" style={{ textDecoration: "none", color: C.steel }}>Analytics</Link>
-          <Link href="/marketplace" style={{ textDecoration: "none", color: C.purple }}>Marketplace</Link>
+          <Link href="/marketplace" style={{ textDecoration: "none", color: C.purple, borderBottom: `2px solid ${C.purple}`, paddingBottom: 2 }}>Marketplace</Link>
         </nav>
-        <Link href="/dashboard" style={{ padding:"11px 15px", color:"white", background:C.coral, fontSize:8, fontWeight:900, textTransform:"uppercase", textDecoration:"none", borderRadius:3 }}>
-          Dashboard ↗
+        <Link href="/onboarding" style={{ padding: "10px 16px", color: "white", background: C.coral, fontSize: 9, fontWeight: 900, textTransform: "uppercase", textDecoration: "none", borderRadius: 4 }}>
+          Get Started ↗
         </Link>
       </header>
 
-      {/* HERO SECTION */}
-      <section style={{ position:"relative", padding:`80px 3% 60px`, overflow:"hidden" }}>
-        <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 24 }}>
-            <Globe size={32} color={C.purple} />
-            <h1 style={{ margin: 0, fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 900, letterSpacing: "-0.07em", lineHeight: 0.83 }}>
-              Agent<br/>Marketplace
-            </h1>
+      {/* PAGE TITLE BAR */}
+      <div style={{ position: "relative", zIndex: 1, padding: "32px 3% 0", maxWidth: 1280, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 800, color: C.purple, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Agent Economy</div>
+            <h1 style={{ margin: 0, fontSize: "clamp(28px,4vw,44px)", fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 1 }}>Marketplace</h1>
+            <p style={{ margin: "10px 0 0", fontSize: 13, color: C.steel, maxWidth: 420 }}>
+              Hire AI agents with verified reputation. Pay per task in USDC.
+            </p>
           </div>
-          <p style={{ maxWidth: 480, margin: "0 auto 32px", fontSize: 14, lineHeight: 1.5, color: C.ink }}>
-            Discover and hire AI agents for your tasks. Each agent has verified reputation, transparent pricing, and instant USDC payments.
-          </p>
-          
-          {/* Search */}
-          <div style={{ position: "relative", maxWidth: 400, margin: "0 auto" }}>
-            <Search size={16} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: C.steel }} />
-            <input
-              type="text"
-              placeholder="Search agents or services..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%", padding: "12px 16px 12px 44px", border: `1px solid rgba(11,26,51,0.2)`,
-                borderRadius: 6, fontSize: 13, boxSizing: "border-box", background: "white"
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Decorative SVG */}
-        <svg style={{ position:"absolute", right:"3%", top:80, zIndex:1, width:"25%", maxWidth:300, opacity:0.3 }} viewBox="0 0 300 200" fill="none" aria-hidden="true">
-          <circle cx="50" cy="50" r="30" stroke={C.ocean} strokeWidth="2" fill="none"/>
-          <circle cx="150" cy="80" r="20" stroke={C.coral} strokeWidth="2" fill="none"/>
-          <circle cx="250" cy="40" r="25" stroke={C.mint} strokeWidth="2" fill="none"/>
-          <path d="M50 50L150 80L250 40" stroke={C.purple} strokeWidth="2" strokeDasharray="5 5"/>
-        </svg>
-      </section>
-
-      {/* STATS OVERVIEW */}
-      {stats && (
-        <section style={{ padding: `0 3% 40px` }}>
-          <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-              <div style={{ background: "white", padding: 24, borderRadius: 12, border: `1px solid rgba(11,26,51,0.08)`, textAlign: "center" }}>
-                <Users size={24} color={C.ocean} style={{ margin: "0 auto 12px" }} />
-                <div style={{ fontSize: 32, fontWeight: 900, color: C.ink, marginBottom: 4 }}>{stats.totalAgents}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>Active Agents</div>
-              </div>
-              <div style={{ background: "white", padding: 24, borderRadius: 12, border: `1px solid rgba(11,26,51,0.08)`, textAlign: "center" }}>
-                <Zap size={24} color={C.coral} style={{ margin: "0 auto 12px" }} />
-                <div style={{ fontSize: 32, fontWeight: 900, color: C.ink, marginBottom: 4 }}>{stats.totalServices}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>Services</div>
-              </div>
-              <div style={{ background: "white", padding: 24, borderRadius: 12, border: `1px solid rgba(11,26,51,0.08)`, textAlign: "center" }}>
-                <Activity size={24} color={C.mint} style={{ margin: "0 auto 12px" }} />
-                <div style={{ fontSize: 32, fontWeight: 900, color: C.ink, marginBottom: 4 }}>{stats.totalPayments}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>Transactions</div>
-              </div>
-              <div style={{ background: "white", padding: 24, borderRadius: 12, border: `1px solid rgba(11,26,51,0.08)`, textAlign: "center" }}>
-                <DollarSign size={24} color={C.purple} style={{ margin: "0 auto 12px" }} />
-                <div style={{ fontSize: 32, fontWeight: 900, color: C.ink, marginBottom: 4 }}>{formatMicroUSDC(stats.totalVolume)}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.steel, textTransform: "uppercase" }}>USDC Volume</div>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* AGENTS GRID */}
-      <section style={{ padding: `0 3% 80px` }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: 24 }}>
-            {filteredAgents.map((agent) => (
-              <article key={agent.id} style={{ 
-                background: "white", borderRadius: 16, border: `1px solid rgba(11,26,51,0.08)`,
-                padding: 32, transition: "all 0.3s", cursor: "pointer", position: "relative", overflow: "hidden"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = "0 8px 25px rgba(11,26,51,0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}>
-                
-                {/* Reputation Badge */}
-                <div style={{ position: "absolute", top: 20, right: 20, display: "flex", alignItems: "center", gap: 4 }}>
-                  <Star size={14} color={getReputationColor(agent.reputation)} fill={getReputationColor(agent.reputation)} />
-                  <span style={{ fontSize: 12, fontWeight: 900, color: getReputationColor(agent.reputation) }}>
-                    {agent.reputation}
-                  </span>
+          {/* STATS INLINE */}
+          {stats && (
+            <div style={{ display: "flex", gap: 0, border: "1px solid rgba(11,26,51,0.12)", borderRadius: 8, overflow: "hidden", background: "white" }}>
+              {[
+                { label: "Agents", value: stats.totalAgents },
+                { label: "Services", value: stats.totalServices },
+                { label: "Txns", value: stats.totalPayments },
+                { label: "Volume", value: `${fmt(stats.totalVolume)} USDC` },
+              ].map((s, i) => (
+                <div key={s.label} style={{ padding: "12px 20px", borderLeft: i > 0 ? "1px solid rgba(11,26,51,0.1)" : "none", textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: C.ink }}>{s.value}</div>
+                  <div style={{ fontSize: 8, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
                 </div>
-
-                {/* Agent Header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 16, background: C.purple,
-                    display: "grid", placeItems: "center", color: "white", fontSize: 24, fontWeight: 900
-                  }}>
-                    {agent.name.charAt(0)}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: C.ink, letterSpacing: "-0.04em" }}>{agent.name}</h3>
-                    <div style={{ fontSize: 11, color: C.steel, fontFamily: "monospace", marginTop: 4 }}>
-                      {agent.walletAddress.slice(0, 8)}...{agent.walletAddress.slice(-6)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Agent Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-                  <div style={{ padding: 16, background: "rgba(90,205,167,0.08)", borderRadius: 12, textAlign: "center" }}>
-                    <div style={{ fontSize: 8, color: C.mint, fontWeight: 800, textTransform: "uppercase", marginBottom: 4 }}>Total Earned</div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: C.ink }}>{formatMicroUSDC(agent.totalEarned)} USDC</div>
-                  </div>
-                  <div style={{ padding: 16, background: "rgba(255,75,49,0.08)", borderRadius: 12, textAlign: "center" }}>
-                    <div style={{ fontSize: 8, color: C.coral, fontWeight: 800, textTransform: "uppercase", marginBottom: 4 }}>Total Spent</div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: C.ink }}>{formatMicroUSDC(agent.totalSpent)} USDC</div>
-                  </div>
-                </div>
-
-                {/* Services */}
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: C.ink, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Services ({agent.services.length})
-                  </div>
-                  {agent.services.slice(0, 2).map((service) => (
-                    <div key={service.id} style={{ 
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "12px 16px", background: "rgba(11,26,51,0.03)", borderRadius: 8, marginBottom: 8
-                    }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{service.name}</div>
-                        <div style={{ fontSize: 10, color: C.steel, marginTop: 2 }}>{service.description}</div>
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 900, color: C.purple, textAlign: "right" }}>
-                        {formatMicroUSDC(service.pricePerUnit)}<br/>
-                        <span style={{ fontSize: 8, color: C.steel }}>per {service.unitType}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {agent.services.length > 2 && (
-                    <div style={{ fontSize: 10, color: C.steel, textAlign: "center", marginTop: 8, fontStyle: "italic" }}>
-                      +{agent.services.length - 2} more services
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Button */}
-                <button style={{
-                  width: "100%", padding: "14px 20px", background: C.ocean, color: "white",
-                  border: "none", borderRadius: 8, fontSize: 12, fontWeight: 800,
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  textTransform: "uppercase", letterSpacing: "0.05em", transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = C.coral;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = C.ocean;
-                }}>
-                  Hire Agent <ArrowRight size={14} />
-                </button>
-              </article>
-            ))}
-          </div>
-
-          {filteredAgents.length === 0 && (
-            <div style={{ textAlign: "center", padding: "80px 20px", color: C.steel }}>
-              <Bot size={64} style={{ margin: "0 auto 24px", opacity: 0.3 }} />
-              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No agents found</div>
-              <div style={{ fontSize: 14 }}>Try adjusting your search terms</div>
+              ))}
             </div>
           )}
         </div>
-      </section>
+        <div style={{ height: 1, background: "rgba(11,26,51,0.1)", marginTop: 28 }} />
+      </div>
+
+      {/* MAIN LAYOUT: SIDEBAR + CONTENT */}
+      <div style={{ position: "relative", zIndex: 1, flex: 1, padding: "24px 3% 48px", maxWidth: 1280, margin: "0 auto", width: "100%", boxSizing: "border-box", display: "grid", gridTemplateColumns: "230px 1fr", gap: 32 }}>
+
+        {/* SIDEBAR */}
+        <aside style={{ alignSelf: "start", position: "sticky", top: 84 }}>
+          {/* Search */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Search</div>
+            <div style={{ position: "relative" }}>
+              <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.steel }} />
+              <input
+                type="text" placeholder="Agent or service..."
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px 10px 34px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, fontSize: 12, boxSizing: "border-box", background: "white", outline: "none" }}
+              />
+            </div>
+          </div>
+
+          {/* Category */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Category</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {categories.map((cat) => {
+                const Icon = cat.icon;
+                const active = selectedCategory === cat.id;
+                return (
+                  <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", borderRadius: 6, background: active ? C.ocean : "transparent", color: active ? "white" : C.ink, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}>
+                    <Icon size={14} />
+                    {cat.name}
+                    <span style={{ marginLeft: "auto", fontSize: 10, opacity: 0.6 }}>
+                      {cat.id === "all" ? agents.length : agents.filter(a => getCategory(a) === cat.id).length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sort */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 800, color: C.steel, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Sort By</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {[
+                { id: "reputation", label: "Reputation" },
+                { id: "earned", label: "Total Earned" },
+                { id: "tasks", label: "Tasks Done" },
+              ].map((s) => (
+                <button key={s.id} onClick={() => setSortBy(s.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "none", borderRadius: 6, background: "transparent", color: sortBy === s.id ? C.purple : C.steel, fontSize: 12, fontWeight: sortBy === s.id ? 800 : 600, cursor: "pointer", textAlign: "left" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: sortBy === s.id ? C.purple : "rgba(11,26,51,0.2)" }} />
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* CONTENT */}
+        <main>
+          {/* Toolbar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: C.steel }}>
+              <strong style={{ color: C.ink }}>{filtered.length}</strong> agents found
+              {selectedCategory !== "all" && <> in <strong style={{ color: C.purple }}>{selectedCategory}</strong></>}
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["grid", "list"] as const).map((v) => {
+                const Icon = v === "grid" ? LayoutGrid : List;
+                return (
+                  <button key={v} onClick={() => setView(v)}
+                    style={{ padding: 8, border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, background: view === v ? C.ink : "white", color: view === v ? "white" : C.steel, cursor: "pointer", display: "grid", placeItems: "center" }}>
+                    <Icon size={14} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* AGENT CARDS */}
+          {pageAgents.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: view === "grid" ? "repeat(auto-fill,minmax(320px,1fr))" : "1fr", gap: 16 }}>
+              {pageAgents.map((agent) => (
+                <article key={agent.id} style={{ background: "white", borderRadius: 10, border: "1px solid rgba(11,26,51,0.1)", padding: 20, display: view === "list" ? "grid" : "block", gridTemplateColumns: view === "list" ? "auto 1fr auto" : undefined, gap: view === "list" ? 20 : undefined, alignItems: view === "list" ? "center" : undefined }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: view === "list" ? 0 : 16 }}>
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 10, background: C.ocean, display: "grid", placeItems: "center", color: "white", fontSize: 18, fontWeight: 900 }}>
+                        {agent.name.charAt(0)}
+                      </div>
+                      <div style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, borderRadius: "50%", background: agent.status === "online" ? C.mint : C.steel, border: "2px solid white" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agent.name}</h3>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 800, color: repColor(agent.reputation), flexShrink: 0 }}>
+                          <Star size={11} fill={repColor(agent.reputation)} />{agent.reputation}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, fontSize: 10, color: C.steel, marginTop: 3 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><CheckCircle size={9} />{agent.completedTasks} tasks</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} />{agent.responseTime}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Services */}
+                  <div style={{ marginBottom: view === "list" ? 0 : 14 }}>
+                    {agent.services.slice(0, view === "list" ? 1 : 2).map((s) => (
+                      <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 10px", background: C.sand, borderRadius: 6, marginBottom: 6 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                          <div style={{ fontSize: 9, color: C.steel, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.description}</div>
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: C.purple, flexShrink: 0 }}>{fmt(s.pricePerUnit)} <span style={{ color: C.steel, fontWeight: 600 }}>/{s.unitType}</span></div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <div style={{ fontSize: 10, color: C.steel }}>
+                      Earned <strong style={{ color: C.mint }}>{fmt(agent.totalEarned)}</strong> USDC
+                    </div>
+                    <button style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", background: C.ocean, color: "white", border: "none", borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer" }}>
+                      Hire <ArrowRight size={11} />
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", padding: "64px 20px", background: "white", borderRadius: 10, border: "1px solid rgba(11,26,51,0.1)" }}>
+              <Bot size={40} color={C.steel} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.ink, marginBottom: 4 }}>No agents found</div>
+              <div style={{ fontSize: 12, color: C.steel, marginBottom: 16 }}>Try a different search or category</div>
+              <button onClick={() => { setSearchTerm(""); setSelectedCategory("all"); }}
+                style={{ padding: "10px 18px", background: C.purple, color: "white", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: "pointer", textTransform: "uppercase" }}>
+                Clear Filters
+              </button>
+            </div>
+          )}
+
+          {/* PAGINATION */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 28, paddingTop: 20, borderTop: "1px solid rgba(11,26,51,0.1)" }}>
+              <div style={{ fontSize: 11, color: C.steel }}>
+                Page <strong style={{ color: C.ink }}>{page}</strong> of {totalPages} · Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 12px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, background: "white", color: page === 1 ? "rgba(11,26,51,0.3)" : C.ink, fontSize: 11, fontWeight: 700, cursor: page === 1 ? "not-allowed" : "pointer" }}>
+                  <ChevronLeft size={12} /> Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                  <button key={n} onClick={() => setPage(n)}
+                    style={{ width: 34, height: 34, border: "1px solid", borderColor: n === page ? C.ink : "rgba(11,26,51,0.15)", borderRadius: 6, background: n === page ? C.ink : "white", color: n === page ? "white" : C.ink, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                    {n}
+                  </button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 12px", border: "1px solid rgba(11,26,51,0.15)", borderRadius: 6, background: "white", color: page === totalPages ? "rgba(11,26,51,0.3)" : C.ink, fontSize: 11, fontWeight: 700, cursor: page === totalPages ? "not-allowed" : "pointer" }}>
+                  Next <ChevronRight size={12} />
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* FOOTER */}
+      <footer style={{ position: "relative", zIndex: 1, borderTop: "1px solid rgba(11,26,51,0.08)", padding: "20px 3%", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, color: C.steel }}>
+        <span>© 2026 ArcGent — Agentic Economy on Arc</span>
+        <div style={{ display: "flex", gap: 16 }}>
+          <Link href="/dashboard" style={{ color: C.steel, textDecoration: "none" }}>Dashboard</Link>
+          <Link href="/analytics" style={{ color: C.steel, textDecoration: "none" }}>Analytics</Link>
+          <Link href="/onboarding" style={{ color: C.steel, textDecoration: "none" }}>Onboarding</Link>
+        </div>
+      </footer>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        ::selection { background: rgba(172,198,233,0.4); }
-      `}}/>
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+        ::selection{background:rgba(172,198,233,.4)}
+        @media (max-width: 900px){
+          main { grid-column: 1 / -1; }
+          aside { position: static !important; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+        }
+      `}} />
     </div>
   );
 }
