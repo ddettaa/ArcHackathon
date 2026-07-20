@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAccount, useBalance } from 'wagmi';
 import { NotificationToasts } from "@/components/Notifications";
 import { 
   Bot, Radio, Brain, Zap, CheckCircle, CreditCard, 
@@ -66,6 +67,10 @@ export default function Dashboard() {
   const [rulesPage, setRulesPage] = useState(1);
   const [paymentsPage, setPaymentsPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
+
+  // User's connected wallet
+  const { address: userAddress, isConnected: userConnected } = useAccount();
+  const { data: userBalance } = useBalance({ address: userAddress });
   useEffect(() => { setMounted(true); }, []);
 
   const fetchData = useCallback(async () => {
@@ -234,9 +239,29 @@ export default function Dashboard() {
               <Clock size={14} /> {pendingApprovals} pending approval
             </div>
           )}
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>{status?.balance || "—"} USDC</div>
-            <div style={{ fontSize: 10, color: C.steel }}>Arc Testnet · {mounted ? formatUptime(status?.uptime || 0) : "—"}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            {/* User Wallet */}
+            {mounted && (
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 9, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em" }}>👤 My Wallet</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: C.surf }}>
+                  {userConnected && userAddress 
+                    ? `${userBalance ? (Number(userBalance.value) / 10 ** userBalance.decimals).toFixed(2) : "0.00"} USDC`
+                    : "Not connected"}
+                </div>
+                {userConnected && userAddress && (
+                  <div style={{ fontSize: 9, color: C.steel }}>{userAddress.slice(0,6)}...{userAddress.slice(-4)}</div>
+                )}
+              </div>
+            )}
+            {/* Divider */}
+            <div style={{ width: 1, height: 30, background: "rgba(255,255,255,0.15)" }} />
+            {/* Agent Wallet */}
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 9, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em" }}>🤖 Agent</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>{status?.balance || "—"} USDC</div>
+              <div style={{ fontSize: 10, color: C.steel }}>Arc Testnet · {mounted ? formatUptime(status?.uptime || 0) : "—"}</div>
+            </div>
           </div>
           {/* KILL / REVIVE */}
           {isKilled ? (
