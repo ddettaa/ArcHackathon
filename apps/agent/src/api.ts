@@ -557,6 +557,18 @@ app.post("/api/nanopayments/send", async (c) => {
   }
 });
 
+app.get("/api/nanopayments/stats", (c) => {
+  if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
+  const db = getDb();
+  try {
+    const nanos = db.select().from(schema.payments).where(eq(schema.payments.type, "nanopayment")).all();
+    const total = nanos.reduce((s: number, p: any) => s + (p.amount || 0), 0);
+    return c.json({ total: nanos.length, volume: total, payments: nanos.slice(-10) });
+  } catch {
+    return c.json({ total: 0, volume: 0, payments: [] });
+  }
+});
+
 // --- PAYMASTER ---
 app.get("/api/paymaster/policies", async (c) => {
   if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
