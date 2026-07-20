@@ -394,16 +394,16 @@ export default function Dashboard() {
                 {rules.slice((rulesPage - 1) * ITEMS_PER_PAGE, rulesPage * ITEMS_PER_PAGE).map(r => (
                 <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", background: "rgba(11,26,51,0.02)", borderRadius: 8, border: "1px solid rgba(11,26,51,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: (sourceBadge[r.signal.source] || sourceBadge.github).bg, color: (sourceBadge[r.signal.source] || sourceBadge.github).text, textTransform: "uppercase" }}>
-                      {r.signal.source}
+                    <span style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: (sourceBadge[r.signalSource] || sourceBadge.github).bg, color: (sourceBadge[r.signalSource] || sourceBadge.github).text, textTransform: "uppercase" }}>
+                      {r.signalSource}
                     </span>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700 }}>{r.name}</div>
-                      <div style={{ fontSize: 11, color: C.steel }}>{r.signal.trigger} → {r.action.amount} USDC</div>
+                      <div style={{ fontSize: 11, color: C.steel }}>{r.signalTrigger} → {r.actionAmount} USDC</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: C.ocean }}>{r.action.amount} USDC</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: C.ocean }}>{r.actionAmount} USDC</span>
                     <button onClick={() => toggleRule(r.id, r.enabled)} style={{
                       padding: "6px 16px", border: "none", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer",
                       background: r.enabled ? C.mint : "rgba(11,26,51,0.08)", color: r.enabled ? C.ink : C.steel,
