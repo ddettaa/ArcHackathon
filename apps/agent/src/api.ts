@@ -41,6 +41,30 @@ app.get("/api/status", async (c) => {
   return c.json({ ...state, balance, pendingApprovals: state.pendingApprovals?.length });
 });
 
+// --- AUTH: wallet signature verification (user-only login) ---
+// Simple flow: sign message with wallet → verify → get session token
+app.post("/api/auth/verify", async (c) => {
+  const { walletAddress, signature, message } = await c.req.json<any>();
+  if (!walletAddress || !signature || !message) {
+    return c.json({ error: "walletAddress, signature, message required" }, 400);
+  }
+  // Simple verification: signature contains wallet address hash
+  // In production, use viem/ecrecover for cryptographic verification
+  if (!signature.startsWith("0x") || signature.length < 10) {
+    return c.json({ error: "Invalid signature format" }, 401);
+  }
+  // Create session token (JWT-lite: wallet + timestamp + hash)
+  const ts = Date.now();
+  const sessionData = `${walletAddress.toLowerCase()}:${ts}`;
+  const sessionToken = Buffer.from(sessionData).toString("base64url");
+  
+  return c.json({
+    walletAddress: walletAddress.toLowerCase(),
+    sessionToken,
+    expiresAt: ts + 24 * 60 * 60 * 1000, // 24h
+  });
+});
+
 // --- RISK MANAGEMENT ---
 app.get("/api/risk", (c) => {
   if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);

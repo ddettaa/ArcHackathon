@@ -97,5 +97,18 @@ export function requireOperator(request: Request): ApiKey | null {
 export function requireViewer(request: Request): ApiKey | null {
   const auth = getAuth();
   const key = extractKey(request);
-  return auth.requireAuth(key, "viewer");
+  // Also accept session tokens (user login)
+  if (key) {
+    const apiKey = auth.requireAuth(key, "viewer");
+    if (apiKey) return apiKey;
+    // Try session token: base64(wallet:timestamp)
+    try {
+      const decoded = Buffer.from(key, "base64url").toString();
+      const [wallet, ts] = decoded.split(":");
+      if (wallet && ts && Date.now() - parseInt(ts) < 24 * 60 * 60 * 1000) {
+        return { key, name: `user:${wallet.slice(0,6)}`, role: "viewer", createdAt: parseInt(ts) };
+      }
+    } catch {}
+  }
+  return null;
 }
