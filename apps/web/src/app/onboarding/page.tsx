@@ -25,6 +25,7 @@ export default function OnboardingPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [myAgent, setMyAgent] = useState<any>(null);
 
   // Fetch templates on mount
   useEffect(() => {
@@ -33,6 +34,20 @@ export default function OnboardingPage() {
       .then(setTemplates)
       .catch(console.error);
   }, []);
+
+  // Auto-provision agent when wallet connects
+  useEffect(() => {
+    if (!isConnected || !address) return;
+    const wallet = address;
+    fetch("/api/my-agent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Wallet-Address": wallet },
+      body: JSON.stringify({ walletAddress: wallet }),
+    })
+      .then(r => r.json())
+      .then(agent => setMyAgent(agent))
+      .catch(console.error);
+  }, [isConnected, address]);
 
   const steps: OnboardingStep[] = [
     {
@@ -77,10 +92,14 @@ export default function OnboardingPage() {
     try {
       const res = await fetch(`/api/templates/${selectedTemplate}/instantiate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(address ? { "X-Wallet-Address": address } : {}),
+        },
         body: JSON.stringify({
           ...formData,
-          recipient: address, // Use connected wallet as default recipient
+          recipient: address,
+          ownerAddress: address,
         }),
       });
       
@@ -139,6 +158,11 @@ export default function OnboardingPage() {
             {isConnected && (
               <div style={{ marginTop: 16, padding: 12, background: "rgba(90,205,167,0.1)", borderRadius: 8, fontSize: 12, color: C.mint }}>
                 ✅ Wallet connected: {address}
+              </div>
+            )}
+            {myAgent && (
+              <div style={{ marginTop: 8, padding: 12, background: "rgba(159,114,255,0.08)", borderRadius: 8, fontSize: 12, color: C.purple }}>
+                🤖 Agent created: <strong>{myAgent.name}</strong> ({myAgent.id})
               </div>
             )}
             <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
