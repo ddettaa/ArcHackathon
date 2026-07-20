@@ -18,9 +18,25 @@ export function WalletConnect() {
 
   const copyAddress = () => {
     if (address) {
-      navigator.clipboard.writeText(address)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      try {
+        // Fallback for browsers without clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(address);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = address;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (e) {
+        console.warn("Copy failed:", e);
+      }
     }
   }
 
