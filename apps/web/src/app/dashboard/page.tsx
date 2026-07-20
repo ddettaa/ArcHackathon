@@ -9,7 +9,7 @@ import {
   Bot, Radio, Brain, Zap, CheckCircle, CreditCard, 
   Plus, RefreshCw, ExternalLink, Shield, ShieldAlert,
   X, Play, AlertTriangle, Clock, DollarSign, Sparkles,
-  Cpu, Loader2, ArrowRight,
+  Cpu, Loader2, ArrowRight, Wallet,
 } from "lucide-react";
 
 const C = {
@@ -331,7 +331,9 @@ export default function Dashboard() {
             {/* User Wallet */}
             {mounted && (
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 9, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em" }}>👤 My Wallet</div>
+                <div style={{ fontSize: 9, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Wallet size={10} /> My Wallet
+                </div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: C.surf }}>
                   {userConnected && userAddress 
                     ? `${userBalance ? (Number(userBalance.value) / 10 ** userBalance.decimals).toFixed(2) : "0.00"} USDC`
@@ -346,7 +348,9 @@ export default function Dashboard() {
             <div style={{ width: 1, height: 30, background: "rgba(255,255,255,0.15)" }} />
             {/* Agent Wallet */}
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 9, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em" }}>🤖 My Agent</div>
+              <div style={{ fontSize: 9, color: C.steel, textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 4 }}>
+                <Bot size={10} /> My Agent
+              </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>
                 {myAgentBalance !== null ? myAgentBalance : (status?.balance || "—")} USDC
               </div>
@@ -363,7 +367,7 @@ export default function Dashboard() {
             fontSize: 12, fontWeight: 700, cursor: "pointer",
             opacity: simulating ? 0.6 : 1,
           }}>
-            <Zap size={14} /> {simulating ? "Running..." : "🚀 Simulate Signal"}
+            <Zap size={14} /> {simulating ? "Running..." : "Simulate Signal"}
           </button>
           {/* KILL / REVIVE */}
           {isKilled ? (
@@ -416,7 +420,7 @@ export default function Dashboard() {
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: simResult.trace?.length ? 12 : 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 20 }}>{simResult.success ? "🎉" : "⚠️"}</span>
+                <span style={{ fontSize: 20 }}>{simResult.success ? "✓" : "✗"}</span>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 800, color: simResult.success ? C.mint : C.coral }}>
                     {simResult.message}
@@ -897,9 +901,9 @@ function RiskPanel() {
     if (form.perRuleCap) body.perRuleCap = parseFloat(form.perRuleCap) * 1_000_000;
     try {
       const res = await fetch("/api/risk/limits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) { setMsg("✅ Limits updated"); setEditing(false); fetchRisk(); }
-      else setMsg("❌ Failed");
-    } catch { setMsg("❌ Error"); }
+      if (res.ok) { setMsg("✓ Limits updated"); setEditing(false); fetchRisk(); }
+      else setMsg("✗ Failed");
+    } catch { setMsg("✗ Error"); }
     setTimeout(() => setMsg(""), 3000);
   };
 
@@ -914,7 +918,7 @@ function RiskPanel() {
         </button>
       </div>
 
-      {msg && <div style={{ padding: "8px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, marginBottom: 12, background: msg.startsWith("✅") ? "rgba(90,205,167,0.1)" : "rgba(255,75,49,0.1)", color: msg.startsWith("✅") ? C.mint : C.coral }}>{msg}</div>}
+      {msg && <div style={{ padding: "8px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, marginBottom: 12, background: msg.startsWith("✓") ? "rgba(90,205,167,0.1)" : "rgba(255,75,49,0.1)", color: msg.startsWith("✓") ? C.mint : C.coral }}>{msg}</div>}
 
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 6 }}>

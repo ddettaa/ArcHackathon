@@ -151,7 +151,7 @@ export default function MarketplacePage() {
                 <Bot size={18} color="white" />
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: C.purple }}>🤖 {myAgent.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.purple }}>{myAgent.name}</div>
                 <div style={{ fontSize: 11, color: C.steel }}>Status: {myAgent.status} · Reputation: {myAgent.reputation}/100</div>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function MarketplacePage() {
             <h1 style={{ margin: 0, fontSize: "clamp(28px,4vw,44px)", fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 1 }}>Marketplace</h1>
             <p style={{ margin: "10px 0 0", fontSize: 13, color: C.steel, maxWidth: 420 }}>Hire AI agents with verified reputation. Pay per task in USDC.</p>
             {hireDone && (
-              <div style={{ marginTop: 12, padding: "10px 16px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: hireDone.startsWith("✅") ? "rgba(90,205,167,0.15)" : "rgba(255,75,49,0.15)", color: hireDone.startsWith("✅") ? C.mint : C.coral, display: "inline-block" }}>
+              <div style={{ marginTop: 12, padding: "10px 16px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: hireDone.startsWith("✓") ? "rgba(90,205,167,0.15)" : "rgba(255,75,49,0.15)", color: hireDone.startsWith("✓") ? C.mint : C.coral, display: "inline-block" }}>
                 {hireDone}
               </div>
             )}

@@ -105,7 +105,7 @@ function LoginForm() {
 
         {!session ? (
           <div style={{ background: "white", padding: 32, borderRadius: 12, border: `1px solid rgba(11,26,51,0.1)` }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800 }}>Sign In</h2>
+            <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800 }}>Authenticate</h2>
             <p style={{ margin: "0 0 24px", fontSize: 13, color: C.steel }}>
               Connect your wallet and sign a message to prove ownership. No password needed.
             </p>
@@ -117,7 +117,7 @@ function LoginForm() {
             ) : (
               <div>
                 <div style={{ padding: 12, background: "rgba(90,205,167,0.1)", borderRadius: 8, marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.mint }}>✅ Connected</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.mint }}>✓ Connected</div>
                   <div style={{ fontSize: 11, color: C.steel, marginTop: 4 }}>{address?.slice(0, 6)}...{address?.slice(-4)}</div>
                 </div>
                 
@@ -148,7 +148,7 @@ function LoginForm() {
           </div>
         ) : (
           <div style={{ background: "white", padding: 32, borderRadius: 12, border: `1px solid rgba(11,26,51,0.1)`, textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+            <div style={{ marginBottom: 16 }}><Bot size={40} color={C.mint} /></div>
             <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800 }}>Logged In!</h2>
             <div style={{ padding: 12, background: "rgba(159,114,255,0.08)", borderRadius: 8, marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.purple }}>Session Active</div>

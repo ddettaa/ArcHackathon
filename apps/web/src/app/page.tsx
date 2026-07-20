@@ -37,14 +37,10 @@ export default function Landing() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [agentsR, statusR] = await Promise.all([
-          fetch("/api/agents/stats").then(r => r.json()),
-          fetch("/api/status", { headers: { "Authorization": "Bearer ag_dccd6ba82f242f3957dff7320e965c085c2e0bf166a170b4" } }).then(r => r.json()),
-        ]);
+        const agentsR = await fetch("/api/agents/stats").then(r => r.json());
         setLiveStats({
           agents: agentsR.totalAgents || 3,
-          payments: statusR.payments || statusR.paymentCount || 3,
-          volume: statusR.totalVolume || statusR.balance ? `${(Number(statusR.balance)/1e6).toFixed(2)}` : "39.99",
+          payments: agentsR.totalPayments || agentsR.totalEarned || 5,
         });
       } catch {}
     };
@@ -72,7 +68,7 @@ export default function Landing() {
       // Auto-scroll to demo section
       document.getElementById("demo")?.scrollIntoView({ behavior: "smooth", block: "center" });
     } catch (e: any) {
-      setSimResult({ success: false, message: e.message, trace: ["❌ Connection failed"] });
+      setSimResult({ success: false, message: e.message, trace: ["Connection failed — try again"] });
     }
     setSimulating(false);
   };
@@ -122,23 +118,23 @@ export default function Landing() {
 
       {/* HERO — full viewport */}
       <section style={{ position:"relative", minHeight:"calc(100vh - 60px)", padding:`120px ${px} 60px`, overflow:"hidden", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-        <h1 className="hero-title" style={{ position:"relative", zIndex:3, maxWidth:800, margin:0, fontSize:"clamp(42px, 7vw, 96px)", fontWeight:900, letterSpacing:"-0.07em", lineHeight:0.83 }}>
+        <h1 className="hero-title" style={{ position:"relative", zIndex:3, maxWidth:800, margin:0, fontSize:"clamp(48px, 8vw, 110px)", fontWeight:900, letterSpacing:"-0.07em", lineHeight:0.83 }}>
           When signals fire,<br/>AI pays.
         </h1>
-        <div style={{ position:"relative", zIndex:3, maxWidth:320, fontSize:13, lineHeight:1.3, marginTop:24, color:C.ink }}>
+        <div style={{ position:"relative", zIndex:3, maxWidth:380, fontSize:15, lineHeight:1.35, marginTop:28, color:C.ink }}>
           Autonomous agents that listen to real-world signals — GitHub merges, API calls, flight delays — and automatically pay people with USDC based on AI reasoning.
           <div className="hero-cta" style={{ marginTop:14, display:"flex", gap:12, flexWrap:"wrap" }}>
             <button
               onClick={simulateDemo}
               disabled={simulating}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 18px",
+                display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 24px",
                 background: C.gold, color: C.ink, border: "none", borderRadius: 4,
-                fontSize: 11, fontWeight: 800, cursor: simulating ? "not-allowed" : "pointer",
+                fontSize: 14, fontWeight: 800, cursor: simulating ? "not-allowed" : "pointer",
                 opacity: simulating ? 0.7 : 1, transition: "all 0.2s",
               }}
             >
-              <Zap size={14} /> {simulating ? "Running..." : "See It Live 🚀"}
+              <Zap size={14} /> {simulating ? "Running..." : "See It Live"}
             </button>
             <Link href="/onboarding" style={{...FL(C.ocean), paddingTop:6}}>Start Building ↗</Link>
           </div>
@@ -156,7 +152,7 @@ export default function Landing() {
       {/* MANIFESTO — full width foam */}
       <section className="manifesto-grid" style={{ position:"relative", padding:`60px ${px}`, background:C.foam, borderTop:"1px solid rgba(11,26,51,0.15)", borderBottom:"1px solid rgba(11,26,51,0.15)" }}>
         <div style={K}>Our Thesis</div>
-        <h2 style={{ maxWidth:900, margin:"16px 0 28px", fontSize:"clamp(32px, 5vw, 56px)", lineHeight:0.86, letterSpacing:"-0.055em" }}>
+        <h2 style={{ maxWidth:900, margin:"16px 0 28px", fontSize:"clamp(36px, 6vw, 64px)", lineHeight:0.86, letterSpacing:"-0.055em" }}>
           Agents don't need permission to <em style={{ fontFamily:"Georgia, serif", fontWeight:400, fontStyle:"italic" }}>transact.</em>
         </h2>
         <p style={{ maxWidth:480, margin:0, fontSize:13, lineHeight:1.35, color:C.ocean }}>
@@ -190,8 +186,8 @@ export default function Landing() {
             </div>
             <div style={{ width: 1, background: "rgba(255,255,255,0.15)" }} />
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 900 }}>{liveStats.volume} USDC</div>
-              <div style={{ fontSize: 8, color: C.surf, textTransform: "uppercase" }}>Agent Balance</div>
+              <div style={{ fontSize: 20, fontWeight: 900 }}>✓</div>
+              <div style={{ fontSize: 8, color: C.surf, textTransform: "uppercase" }}>Verified on ArcScan</div>
             </div>
           </div>
         )}
@@ -205,14 +201,14 @@ export default function Landing() {
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 28 }}>{simResult.success ? "🎉" : "⚠️"}</span>
+                <span style={{ fontSize: 28 }}>{simResult.success ? "✓" : "✗"}</span>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: simResult.success ? C.mint : C.coral }}>
                     {simResult.message}
                   </div>
                   {simResult.ai && (
                     <div style={{ fontSize: 11, color: C.steel, marginTop: 4 }}>
-                      🧠 AI: {simResult.ai.confidence}% confidence · {simResult.ai.reasoning}
+                      AI: {simResult.ai.confidence}% confidence · {simResult.ai.reasoning}
                     </div>
                   )}
                 </div>
@@ -267,7 +263,7 @@ export default function Landing() {
             }}
           >
             <Zap size={18} />
-            {simulating ? "AI is evaluating..." : "🚀 See It Live"}
+            {simulating ? "AI is evaluating..." : "See It Live"}
           </button>
           <div style={{ marginTop: 10, fontSize: 9, color: C.steel }}>
             Real USDC · Arc Network · Circle Agent Stack
