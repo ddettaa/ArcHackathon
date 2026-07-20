@@ -43,6 +43,35 @@ app.get("/api/risk", (c) => {
   return c.json(agent.getRiskStatus());
 });
 
+// Agent provisioning — creates a personal agent for connected wallet
+app.post("/api/my-agent", async (c) => {
+  if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
+  const { walletAddress, name } = await c.req.json<any>();
+  if (!walletAddress) return c.json({ error: "walletAddress required" }, 400);
+  
+  const db = getDb();
+  // Check if agent already exists for this wallet
+  const existing = db.select().from(schema.agents).where(eq(schema.agents.ownerAddress, walletAddress)).get();
+  if (existing) return c.json(existing);
+  
+  // Create new agent
+  const agentId = `agent_${walletAddress.slice(2, 10)}_${Date.now().toString(36)}`;
+  const newAgent = {
+    id: agentId,
+    ownerAddress: walletAddress,
+    name: name || `Agent ${walletAddress.slice(0, 6)}`,
+    walletAddress: walletAddress, // user's own wallet
+    status: "online",
+    reputation: 80,
+    totalEarned: 0,
+    totalSpent: 0,
+    completedTasks: 0,
+    responseTime: "—",
+  };
+  db.insert(schema.agents).values(newAgent).run();
+  return c.json(newAgent, 201);
+});
+
 app.post("/api/risk/limits", async (c) => {
   if (!requireAdmin(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
   const agent = getAgent();
@@ -431,7 +460,8 @@ async function main() {
   const sqlite = (db as any).$client as import("bun:sqlite").Database;
   sqlite.run(`
     CREATE TABLE IF NOT EXISTS rules (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL, signal_source TEXT NOT NULL,
+      id TEXT PRIMARY KEY, owner_address TEXT NOT NULL DEFAULT '0x0',
+      name TEXT NOT NULL, signal_source TEXT NOT NULL,
       signal_trigger TEXT NOT NULL, signal_conditions TEXT DEFAULT '{}',
       action_type TEXT NOT NULL, action_recipient TEXT NOT NULL,
       action_amount REAL NOT NULL, action_currency TEXT DEFAULT 'USDC',
@@ -441,7 +471,8 @@ async function main() {
       updated_at INTEGER DEFAULT (unixepoch() * 1000)
     );
     CREATE TABLE IF NOT EXISTS payments (
-      id TEXT PRIMARY KEY, rule_id TEXT, from_agent TEXT, to_agent TEXT,
+      id TEXT PRIMARY KEY, owner_address TEXT NOT NULL DEFAULT '0x0',
+      rule_id TEXT, from_agent TEXT, to_agent TEXT,
       "to" TEXT NOT NULL, amount REAL NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending', type TEXT DEFAULT 'payment',
       memo TEXT, tx_hash TEXT, block_number INTEGER,
@@ -450,7 +481,8 @@ async function main() {
       created_at INTEGER DEFAULT (unixepoch() * 1000), confirmed_at INTEGER
     );
     CREATE TABLE IF NOT EXISTS agents (
-      id TEXT PRIMARY KEY, name TEXT NOT NULL, wallet_address TEXT NOT NULL,
+      id TEXT PRIMARY KEY, owner_address TEXT NOT NULL DEFAULT '0x0',
+      name TEXT NOT NULL, wallet_address TEXT NOT NULL,
       status TEXT DEFAULT 'online', reputation INTEGER DEFAULT 80,
       total_earned REAL DEFAULT 0, total_spent REAL DEFAULT 0,
       completed_tasks INTEGER DEFAULT 0, response_time TEXT,
@@ -494,7 +526,13 @@ async function main() {
   console.log("🗄️ DB ready");
 
   // Seed rules + payments from old JSON if DB is empty
-  const ruleCount = db.select({ c: sql`count(*)` }).from(schema.rules).get();
+  // NOTE: tables created by migration above; drizzle uses schema.table names
+  let ruleCount;
+  try {
+    ruleCount = db.select({ c: sql`count(*)` }).from(schema.rules).get();
+  } catch {
+    ruleCount = { c: 0 };
+  }
   if (!ruleCount?.c) {
     const rulesPath = "./config/rules.json";
     if (existsSync(rulesPath)) {
@@ -502,7 +540,8 @@ async function main() {
       for (const r of oldRules) {
         const id = r.id || `rule_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         await db.insert(schema.rules).values({
-          id, name: r.name || "Unnamed",
+          id, ownerAddress: "0x0",
+          name: r.name || "Unnamed",
           signalSource: r.signal?.source || "github",
           signalTrigger: r.signal?.trigger || "",
           signalConditions: r.signal?.conditions || {},
@@ -522,6 +561,7 @@ async function main() {
       for (const p of oldPayments) {
         await db.insert(schema.payments).values({
           id: p.id || `pay_${Date.now()}`,
+          ownerAddress: "0x0",
           ruleId: p.ruleId || null,
           to: p.to || "0x",
           amount: p.amount < 1 ? p.amount * 1e6 : p.amount, // convert from USDC to micro-USDC if needed
@@ -538,9 +578,9 @@ async function main() {
   const agentCount = db.select({ c: sql`count(*)` }).from(schema.agents).get();
   if (!agentCount?.c) {
     await db.insert(schema.agents).values([
-      { id: "content-evaluator", name: "Content Evaluator Agent", walletAddress: "0x3695F3261cc7FB2e54106df524c12ce9FFd9a556", reputation: 95, totalEarned: 12400, completedTasks: 312, responseTime: "8s" },
-      { id: "translation-agent", name: "Translation Agent", walletAddress: "0x3695F3261cc7FB2e54106df524c12ce9FFd9a556", reputation: 88, totalEarned: 8900, completedTasks: 245, responseTime: "12s" },
-      { id: "security-auditor", name: "Security Auditor Agent", walletAddress: "0x3695F3261cc7FB2e54106df524c12ce9FFd9a556", reputation: 92, totalEarned: 15100, completedTasks: 187, responseTime: "5s" },
+      { id: "content-evaluator", ownerAddress: "0x0", name: "Content Evaluator Agent", walletAddress: "0x3695F3261cc7FB2e54106df524c12ce9FFd9a556", reputation: 95, totalEarned: 12400, completedTasks: 312, responseTime: "8s" },
+      { id: "translation-agent", ownerAddress: "0x0", name: "Translation Agent", walletAddress: "0x3695F3261cc7FB2e54106df524c12ce9FFd9a556", reputation: 88, totalEarned: 8900, completedTasks: 245, responseTime: "12s" },
+      { id: "security-auditor", ownerAddress: "0x0", name: "Security Auditor Agent", walletAddress: "0x3695F3261cc7FB2e54106df524c12ce9FFd9a556", reputation: 92, totalEarned: 15100, completedTasks: 187, responseTime: "5s" },
     ]).run();
     await db.insert(schema.services).values([
       { id: "content-quality-check", name: "Content Quality Check", description: "AI evaluates content quality and originality", providerAgentId: "content-evaluator", pricePerUnit: 500, unitType: "request", category: "content", rating: 4.8, reviews: 156 },

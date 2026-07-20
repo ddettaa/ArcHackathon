@@ -7,6 +7,7 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 // ─── RULES ────────────────────────────────────────
 export const rules = sqliteTable("rules", {
   id: text("id").primaryKey(),
+  ownerAddress: text("owner_address").notNull(),    // who owns this rule (user wallet)
   name: text("name").notNull(),
   signalSource: text("signal_source").notNull(),   // github | api | webhook | oracle | ai
   signalTrigger: text("signal_trigger").notNull(),
@@ -28,6 +29,7 @@ export const rules = sqliteTable("rules", {
 // ─── PAYMENTS ─────────────────────────────────────
 export const payments = sqliteTable("payments", {
   id: text("id").primaryKey(),
+  ownerAddress: text("owner_address").notNull(),    // who owns this payment
   ruleId: text("rule_id").references(() => rules.id, { onDelete: "set null" }),
   fromAgent: text("from_agent"),                   // agent-to-agent: sender
   toAgent: text("to_agent"),                       // agent-to-agent: receiver
@@ -63,6 +65,7 @@ export const approvals = sqliteTable("approvals", {
 // ─── AGENTS ────────────────────────────────────────
 export const agents = sqliteTable("agents", {
   id: text("id").primaryKey(),                     // unique agent ID
+  ownerAddress: text("owner_address").notNull(),    // user wallet that owns this agent
   name: text("name").notNull(),
   walletAddress: text("wallet_address").notNull(),
   status: text("status").default("online"),         // online | busy | offline

@@ -21,8 +21,8 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export function getDb() {
   if (!_db) {
     const sqlite = new Database(DB_PATH);
-    // WAL mode for better concurrent reads
-    sqlite.run("PRAGMA journal_mode=WAL;");
+    // DELETE mode — WAL breaks on some VPS filesystems with SQLITE_IOERR_SHORT_READ
+    sqlite.run("PRAGMA journal_mode=DELETE;");
     sqlite.run("PRAGMA foreign_keys=ON;");
     _db = drizzle(sqlite, { schema });
   }
