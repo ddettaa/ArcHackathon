@@ -1,4 +1,4 @@
-# ArcGent 🔥
+# ArcGent
 
 **If This, Then Pay.** Autonomous agents that listen to real-world signals — GitHub merges, API calls, flight delays — and automatically pay people with USDC based on AI reasoning.
 
@@ -6,38 +6,38 @@ Built for [Arc Agentic Economy Hackathon](https://arc.network). Runs on **Circle
 
 ---
 
-## 🎯 The Problem
+## The Problem
 
 Today's autonomous agents can monitor and reason, but they can't **pay**. ArcGent bridges that gap: signals → AI evaluation → onchain USDC settlement. Fully autonomous. No humans in the loop.
 
 ---
 
-## ✨ Features
+## Features
 
-### 🚀 Live Signal Simulator
+### Live Signal Simulator
 Click one button. Watch the full flow: signal fires → AI evaluates → **real USDC payment** on Arc Network. All in < 5 seconds.
 
 ```
-📡 Webhook received: github/pr_merged
-🔍 1 matching rule found
-🧠 AI: 80% confidence — contributor deserves payment
-💸 0.01 USDC sent → 0x350e...B16a
-✅ TX: 0x1132...b62dd (ArcScan)
+[1] Webhook received: github/pr_merged
+[2] 1 matching rule found
+[3] AI: 80% confidence — contributor deserves payment
+[4] 0.01 USDC sent → 0x350e...B16a
+[5] TX: 0x1132...b62dd (ArcScan)
 ```
 
-### 🤖 AI-Powered Auto-Pay
+### AI-Powered Auto-Pay
 - **3 confidence tiers**: ≥80% AUTO, 60-80% REVIEW, <60% REJECT
 - LLM evaluates signal context before triggering payment
 - Nanopayments (< $0.01) and standard USDC transfers
 - Paymaster policies for gas sponsorship
 
-### 👥 Multi-Tenant Architecture
+### Multi-Tenant Architecture
 - Every user gets their own agent via wallet signature verification
 - Per-user rules, payments, and balance tracking
 - Shared physical agent wallet with `ownerAddress` scoping
 - Session tokens with 24h expiry
 
-### 📊 Full Dashboard Suite
+### Full Dashboard Suite
 
 | Page | Description |
 |------|-------------|
@@ -48,7 +48,7 @@ Click one button. Watch the full flow: signal fires → AI evaluates → **real 
 | **Onboarding** | Wallet connect → pick template → activate agent |
 | **Login** | Signature-based auth, auto-redirect |
 
-### 🔒 Security
+### Security
 - 3-role auth system: Viewer (0), Operator (1), Admin (2)
 - Wallet signature verification for user login
 - API key + session token dual auth
@@ -56,7 +56,7 @@ Click one button. Watch the full flow: signal fires → AI evaluates → **real 
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -87,7 +87,7 @@ Click one button. Watch the full flow: signal fires → AI evaluates → **real 
 
 ---
 
-## 📦 Monorepo
+## Monorepo
 
 ```
 arcgent/
@@ -110,7 +110,7 @@ arcgent/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - [Bun](https://bun.com) 1.2+
@@ -137,11 +137,11 @@ cd apps/agent && bun run dev
 cd apps/web && bun run dev
 ```
 
-Open `http://localhost:3000` → click **See It Live 🚀** → watch AI pay USDC onchain.
+Open `http://localhost:3000` → click **See It Live** → watch AI pay USDC onchain.
 
 ---
 
-## 🔌 API Reference (41 Endpoints)
+## API Reference (41 Endpoints)
 
 ### Core
 | Method | Endpoint | Auth | Description |
@@ -206,7 +206,7 @@ Open `http://localhost:3000` → click **See It Live 🚀** → watch AI pay USD
 
 ---
 
-## 💰 Real Transaction Proofs
+## Real Transaction Proofs
 
 All features verified with real USDC payments on Arc Testnet:
 
@@ -219,7 +219,7 @@ All features verified with real USDC payments on Arc Testnet:
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -234,6 +234,6 @@ All features verified with real USDC payments on Arc Testnet:
 
 ---
 
-## 📄 License
+## License
 
 MIT
