@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useBalance } from 'wagmi';
 import { NotificationToasts } from "@/components/Notifications";
+import NavBar from "@/components/NavBar";
 import { 
   Bot, Radio, Brain, Zap, CheckCircle, CreditCard, 
   Plus, RefreshCw, ExternalLink, Shield, ShieldAlert,
@@ -80,12 +81,25 @@ export default function Dashboard() {
   useEffect(() => {
     if (!userAddress) return;
     const wallet = userAddress;
-    fetch(`/api/my-agent?walletAddress=${wallet}`, { headers: { "X-Wallet-Address": wallet } })
+    
+    // Get session token
+    let authHeader: Record<string,string> = { "X-Wallet-Address": wallet };
+    const session = localStorage.getItem("arcgent_session");
+    if (session) {
+      try {
+        const s = JSON.parse(session);
+        if (s.sessionToken && s.expiresAt > Date.now()) {
+          authHeader["Authorization"] = `Bearer ${s.sessionToken}`;
+        }
+      } catch {}
+    }
+    
+    fetch(`/api/my-agent?walletAddress=${wallet}`, { headers: authHeader })
       .then(r => r.ok ? r.json() : null)
       .then(agent => {
         setMyAgent(agent);
         if (agent?.walletAddress) {
-          fetch("/api/status", { headers: { "X-Wallet-Address": wallet } })
+          fetch("/api/status", { headers: authHeader })
             .then(r => r.ok ? r.json() : null)
             .then(s => setMyAgentBalance(s?.balance || "0.00"));
         }
@@ -95,13 +109,26 @@ export default function Dashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const walletHeader: Record<string,string> = {};
-      if (userAddress) walletHeader["X-Wallet-Address"] = userAddress;
+      // Use session token from login, fallback to wallet header
+      let authHeader: Record<string,string> = {};
+      const session = localStorage.getItem("arcgent_session");
+      if (session) {
+        try {
+          const s = JSON.parse(session);
+          if (s.sessionToken && s.expiresAt > Date.now()) {
+            authHeader["Authorization"] = `Bearer ${s.sessionToken}`;
+          }
+        } catch {}
+      }
+      if (!authHeader["Authorization"] && userAddress) {
+        authHeader["X-Wallet-Address"] = userAddress;
+      }
+      
       const [sRes, rRes, pRes, aRes] = await Promise.all([
-        fetch("/api/status").then(r => r.ok ? r.json() : null),
-        fetch("/api/rules", { headers: walletHeader }).then(r => r.ok ? r.json() : []),
-        fetch("/api/payments", { headers: walletHeader }).then(r => r.ok ? r.json() : []),
-        fetch("/api/approvals", { headers: walletHeader }).then(r => r.ok ? r.json() : []),
+        fetch("/api/status", { headers: authHeader }).then(r => r.ok ? r.json() : null),
+        fetch("/api/rules", { headers: authHeader }).then(r => r.ok ? r.json() : []),
+        fetch("/api/payments", { headers: authHeader }).then(r => r.ok ? r.json() : []),
+        fetch("/api/approvals", { headers: authHeader }).then(r => r.ok ? r.json() : []),
       ]);
       if (sRes) setStatus(sRes);
       setRules(rRes || []);
@@ -225,6 +252,8 @@ export default function Dashboard() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.sand, fontFamily: "'DM Sans', sans-serif", color: C.ink }} suppressHydrationWarning>
+      <NavBar ctaLabel="Get Started" ctaHref="/onboarding" />
+      <NotificationToasts />
       {/* HEADER */}
       <header style={{
         position: "sticky", top: 0, zIndex: 50,

@@ -54,10 +54,10 @@ interface HistoryResponse {
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<PaymentStats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [timeRange, setTimeRange] = useState("7d");
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d" | "all">("7d");
   const [mounted, setMounted] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => { setMounted(true); fetchAnalytics(); }, [timeRange]);
   const totalPages = Math.max(Math.ceil(activity.length / ITEMS_PER_PAGE), 1);
@@ -65,7 +65,9 @@ export default function AnalyticsPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch("/api/payments/history");
+      const daysMap: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30, "all": 365 };
+      const days = daysMap[timeRange] || 7;
+      const res = await fetch(`/api/payments/history?days=${days}`);
       if (res.ok) {
         const data: HistoryResponse = await res.json();
         setStats({

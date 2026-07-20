@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { WalletConnect } from "@/components/WalletConnect";
+import NavBar from "@/components/NavBar";
 import { CheckCircle, ArrowRight, Wallet, Settings, Zap } from "lucide-react";
 
 const C = {
@@ -117,6 +118,7 @@ export default function OnboardingPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.sand, fontFamily: "'DM Sans', sans-serif" }}>
+      <NavBar ctaLabel="Dashboard" ctaHref="/dashboard" />
       {/* Header */}
       <div style={{ padding: "20px 3%", borderBottom: `1px solid rgba(11,26,51,0.1)` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

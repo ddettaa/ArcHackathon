@@ -179,13 +179,21 @@ app.get("/api/approvals", (c) => {
 app.get("/api/payments/history", async (c) => {
   if (!requireViewer(c.req.raw)) return c.json({ error: "Unauthorized" }, 401);
   const db = getDb();
+  const days = parseInt(c.req.query("days") || "7");
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   
   // Get all payments with real timestamps
   const allPayments = await db.select().from(schema.payments).all();
   
+  // Filter by time range
+  const filtered = allPayments.filter(p => {
+    const ts = p.createdAt ? new Date(p.createdAt).getTime() : 0;
+    return ts >= cutoff;
+  });
+  
   // Group by date
   const dailyMap = new Map<string, { volume: number; transactions: number }>();
-  for (const p of allPayments) {
+  for (const p of filtered) {
     const date = p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "unknown";
     const existing = dailyMap.get(date) || { volume: 0, transactions: 0 };
     existing.volume += p.amount;
@@ -208,7 +216,7 @@ app.get("/api/payments/history", async (c) => {
     agentPayments = Array.isArray(result) ? result : [];
   } catch { /* A2A not initialized yet */ }
   
-  const activity = allPayments.map(p => ({
+  const activity = filtered.map(p => ({
     id: p.id,
     type: p.fromAgent ? "spent" : "earned",
     agentId: p.fromAgent || p.ruleId || "system",
@@ -220,9 +228,9 @@ app.get("/api/payments/history", async (c) => {
   })).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   
   return c.json({
-    totalVolume: allPayments.reduce((s, p) => s + p.amount, 0),
-    totalPayments: allPayments.length,
-    averageAmount: allPayments.length ? allPayments.reduce((s, p) => s + p.amount, 0) / allPayments.length : 0,
+    totalVolume: filtered.reduce((s, p) => s + p.amount, 0),
+    totalPayments: filtered.length,
+    averageAmount: filtered.length ? filtered.reduce((s, p) => s + p.amount, 0) / filtered.length : 0,
     dailyVolume,
     activity,
     agentPayments: (agentPayments || []).length,

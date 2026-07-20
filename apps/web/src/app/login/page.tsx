@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAccount, useSignMessage } from "wagmi";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WalletConnect } from "@/components/WalletConnect";
 import { Wallet, ArrowRight, Shield, Zap, Bot } from "lucide-react";
 
@@ -11,12 +12,17 @@ const C = {
   gold: "#f2a43a", surf: "#acc6e9",
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [error, setError] = useState("");
+
+  // Get redirect target from URL
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   // Check for existing session
   useEffect(() => {
@@ -24,8 +30,11 @@ export default function LoginPage() {
     if (saved) {
       try {
         const s = JSON.parse(saved);
-        if (s.expiresAt > Date.now()) setSession(s);
-        else localStorage.removeItem("arcgent_session");
+        if (s.expiresAt > Date.now()) {
+          setSession(s);
+          // Auto-redirect if already logged in
+          router.push(redirectTo);
+        } else localStorage.removeItem("arcgent_session");
       } catch {}
     }
   }, []);
@@ -67,6 +76,9 @@ export default function LoginPage() {
         },
         body: JSON.stringify({ walletAddress: address }),
       });
+      
+      // Redirect to original page
+      setTimeout(() => router.push(redirectTo), 500);
       
     } catch (e: any) {
       setError(e.message || "Login failed");
@@ -183,5 +195,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#f4f0e6", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

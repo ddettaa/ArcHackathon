@@ -7,6 +7,7 @@ import {
   ArrowRight, ChevronLeft, ChevronRight, LayoutGrid, List,
   CheckCircle, Clock
 } from "lucide-react";
+import { useAccount } from "wagmi";
 import NavBar from "@/components/NavBar";
 
 const C: Record<string, string> = {
@@ -39,9 +40,23 @@ export default function MarketplacePage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [hiringId, setHiringId] = useState<string | null>(null);
   const [hireDone, setHireDone] = useState<string | null>(null);
+  const [myAgent, setMyAgent] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { setPage(1); }, [searchTerm, selectedCategory]);
+
+  // Fetch user's agent when wallet connects
+  const { address: userAddress } = useAccount();
+  useEffect(() => {
+    if (!userAddress) return;
+    fetch(`/api/my-agent?walletAddress=${userAddress}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(agent => setMyAgent(agent))
+      .catch(() => {});
+  }, [userAddress]);
 
   const fetchData = async () => {
     try {
@@ -128,6 +143,25 @@ export default function MarketplacePage() {
       <NavBar ctaLabel="Get Started" ctaHref="/onboarding" />
 
       <div style={{ position: "relative", zIndex: 1, padding: "32px 3% 0", maxWidth: 1280, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        {/* My Agent Banner */}
+        {mounted && myAgent && (
+          <div style={{ marginBottom: 24, padding: "16px 20px", background: "rgba(159,114,255,0.06)", border: "1px solid rgba(159,114,255,0.2)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: C.purple, display: "grid", placeItems: "center" }}>
+                <Bot size={18} color="white" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.purple }}>🤖 {myAgent.name}</div>
+                <div style={{ fontSize: 11, color: C.steel }}>Status: {myAgent.status} · Reputation: {myAgent.reputation}/100</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+              <div><span style={{ color: C.steel }}>Earned:</span> <strong style={{ color: C.mint }}>{fmt(myAgent.totalEarned || 0)} USDC</strong></div>
+              <div><span style={{ color: C.steel }}>Spent:</span> <strong style={{ color: C.coral }}>{fmt(myAgent.totalSpent || 0)} USDC</strong></div>
+              <div><span style={{ color: C.steel }}>Tasks:</span> <strong>{myAgent.completedTasks || 0}</strong></div>
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 800, color: C.purple, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Agent Economy</div>

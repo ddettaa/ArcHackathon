@@ -28,9 +28,15 @@ export default function CommLogPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<"all" | "completed" | "failed">("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [agents, setAgents] = useState<any[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); fetchData(); const t = setInterval(fetchData, 15000); return () => clearInterval(t); }, []);
+
+  useEffect(() => {
+    fetch("/api/agents").then(r => r.ok ? r.json() : []).then(setAgents).catch(() => {});
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -44,6 +50,7 @@ export default function CommLogPage() {
   };
 
   const filtered = payments.filter(p => {
+    if (agentFilter !== "all" && p.fromAgentId !== agentFilter && p.toAgentId !== agentFilter) return false;
     if (filter === "all") return true;
     if (filter === "completed") return p.status === "completed" || p.status === "confirmed";
     return p.status === "failed";
@@ -83,8 +90,8 @@ export default function CommLogPage() {
         </div>
 
         {/* Controls */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {(["all", "completed", "failed"] as const).map(f => (
               <button key={f} onClick={() => { setFilter(f); setPage(1); }}
                 style={{ padding: "7px 14px", borderRadius: 6, fontSize: 10, fontWeight: 700, textTransform: "uppercase", cursor: "pointer", border: "1px solid", borderColor: filter === f ? C.ocean : "rgba(11,26,51,0.1)", background: filter === f ? C.ocean : "white", color: filter === f ? "white" : C.steel }}>
@@ -92,9 +99,21 @@ export default function CommLogPage() {
               </button>
             ))}
           </div>
-          <button onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(11,26,51,0.1)", background: "white", color: C.steel }}>
-            <RefreshCw size={12} /> Refresh
-          </button>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <select
+              value={agentFilter}
+              onChange={(e) => { setAgentFilter(e.target.value); setPage(1); }}
+              style={{ padding: "7px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: "1px solid rgba(11,26,51,0.1)", background: "white", color: C.ink, cursor: "pointer" }}
+            >
+              <option value="all">All Agents</option>
+              {agents.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            <button onClick={fetchData} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(11,26,51,0.1)", background: "white", color: C.steel }}>
+              <RefreshCw size={12} /> Refresh
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
