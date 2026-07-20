@@ -158,6 +158,7 @@ export class ArcGentAgent {
     if (!rule.id) rule.id = `rule_${Date.now()}`;
     this.db.insert(rules).values({
       id: rule.id,
+      ownerAddress: (rule as any).ownerAddress || "0x0",
       name: rule.name,
       signalSource: rule.signal.source,
       signalTrigger: rule.signal.trigger,

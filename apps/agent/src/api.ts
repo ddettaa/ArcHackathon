@@ -260,7 +260,8 @@ app.post("/api/rules", async (c) => {
     action: body.action || { type: "pay", recipient: "", amount: 0, currency: "USDC" },
     enabled: body.enabled ?? false,
     cooldown: body.cooldown,
-  };
+  } as AgentRule & { ownerAddress?: string };
+  (rule as any).ownerAddress = owner;
   // Attach owner for multi-tenant filtering
   if (owner !== "0x0") {
     const db = getDb();
